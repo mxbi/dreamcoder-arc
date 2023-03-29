@@ -1,0 +1,47 @@
+version: 2.1
+orbs:
+  codecov: codecov/codecov@1.0.4
+jobs:
+  build:
+    docker:
+      - image: circleci/python:3.6.1
+
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "requirements.txt" }}
+            # fallback to using the latest cache if no exact match is found
+            - v1-dependencies-
+
+      - run:
+          name: install dependencies
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install -r requirements.txt
+
+      - save_cache:
+          paths:
+            - ./venv
+          key: v1-dependencies-{{ checksum "requirements.txt" }}
+
+      - run:
+          name: run tests
+          environment:
+            PYTHONPATH: nltk
+          command: |
+            . venv/bin/activate
+            nosetests --with-coverage --cover-xml
+
+      - store_artifacts:
+          path: test-reports
+          destination: test-reports
+
+      - codecov/upload:
+          token: d6b0f8ac-e9b1-4947-96b1-1e8b04697f02
+          flags: unittest
