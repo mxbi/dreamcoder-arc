@@ -53,9 +53,13 @@ class Task(object):
         return "\n".join(description)
 
     def predict(self, f, x):
-        for a in x:
-            f = f(a)
-        return f
+        try:
+            for a in x:
+                f = f(a)
+            return f
+        except Exception as e:
+            pass
+            # traceback.print_exc()
 
     @property
     def supervision(self):

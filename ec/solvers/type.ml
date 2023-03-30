@@ -306,6 +306,7 @@ let tint = make_ground "int";;
 let tcharacter = make_ground "char";;
 let treal = make_ground "real";;
 let tboolean = make_ground "bool";;
+let tbool = tboolean;;
 let turtle = make_ground "turtle";;
 let ttower = make_ground "tower";;
 let tstate = make_ground "tstate";;

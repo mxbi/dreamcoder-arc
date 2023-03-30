@@ -129,40 +129,6 @@ let closed_inference = snd % infer_program_type empty_context [];;
 let make_invention i =
   Invented(closed_inference i |> canonical_type, i)
 
-(* let rec bidirectional_type_inference (environment : tp list) (request : tp) (p : program) : ((tp list)*tp) option = *)
-(*   match p with *)
-(*   | Index(j) -> *)
-(*     (match List.nth environment j with *)
-(*      | None -> raise UnboundVariable *)
-(*      | Some(t) -> *)
-(*        try *)
-(*          let k = unify empty_context t request in *)
-(*          Some((environment |> List.map ~f:(applyContext k), *)
-(*               applyContext k request)) *)
-(*        with UnificationFailure -> None *)
-(*     ) *)
-(*   | Primitive(t,_,_) | Invented(t,_) -> begin *)
-(*     let offset = *)
-(*       (request::environment) |> List.map ~f:next_type_variable |> List.reduce_exn l ~f:max *)
-(*     in *)
-(*     let t = add_constant_to_type_variables offset t in *)
-(*     try *)
-(*       let k = unify empty_context t request in *)
-(*       Some((environment |> List.map ~f:(applyContext k), *)
-(*             applyContext k request)) *)
-(*     with UnificationFailure -> None *)
-(*     end *)
-(*   | Abstraction(b) -> *)
-(*     let offset = *)
-(*       (request::environment) |> List.map ~f:next_type_variable |> List.reduce_exn l ~f:max *)
-(*     in *)
-(*     let environment' = TID(offset) :: environment in *)
-(*     match bidirectional_type_inference environment' *)
-(*             instantiate_type context t *)
-            
-
-  
-
 
 exception UnknownPrimitive of string
     
@@ -418,12 +384,24 @@ let primitive9 = primitive "9" tint 9;;
 let primitive20 = primitive "ifty" tint 20;;
 let primitive_addition = primitive "+" (tint @> tint @> tint) (fun x y -> x + y);;
 let primitive_increment = primitive "incr" (tint @> tint) (fun x -> 1+x);;
+let primitive_increment2 = primitive "incr2" (tint @> tint) (fun x -> 2+x);;
 let primitive_decrement = primitive "decr" (tint @> tint) (fun x -> x - 1);;
 let primitive_subtraction = primitive "-" (tint @> tint @> tint) (-);;
 let primitive_negation = primitive "negate" (tint @> tint) (fun x -> 0-x);;
+let primitive_multiply1= primitive "mult1" (tint @> tint) (fun x -> 1*x);;
+let primitive_multiply2= primitive "mult2" (tint @> tint) (fun x -> 2*x);;
+let primitive_multiply3= primitive "mult3" (tint @> tint) (fun x -> 3*x);;
 let primitive_multiplication = primitive "*" (tint @> tint @> tint) ( * );;
 let primitive_modulus = primitive "mod" (tint @> tint @> tint) (fun x y -> x mod y);;
 
+
+
+
+
+
+
+
+let primitive_compare = primitive "compare" ((t0 @> t1) @> t0 @> t0 @> tboolean) (fun x -> x);;
 let primitive_apply = primitive "apply" (t1 @> (t1 @> t0) @> t0) (fun x f -> f x);;
 
 let primitive_true = primitive "true" tboolean true;;
@@ -506,8 +484,7 @@ let primitive_mapi = primitive "mapi" ((tint @> t0 @> t1) @> (tlist t0) @> (tlis
     List.mapi l ~f:f);;
 let primitive_a2 = primitive "++" ((tlist t0) @> (tlist t0) @> (tlist t0)) (@);;
 let primitive_reducei = primitive "reducei" ((tint @> t1 @> t0 @> t1) @> t1 @> (tlist t0) @> t1) (fun f x0 l -> List.foldi ~f:f ~init:x0 l);;
-let primitive_filter = primitive "filter" ((t0 @> tboolean) @> (tlist t0) @> (tlist t0)) (fun f l -> List.filter ~f:f l);;
-let primitive_filter_int = primitive "filter_int" ((tint @> tboolean) @> (tlist tint) @> (tlist tint)) (fun f l -> List.filter ~f:f l);;
+let primitive_filter = primitive "filter" ((tint @> tboolean) @> (tlist tint) @> (tlist tint)) (fun f l -> List.filter ~f:f l);;
 let primitive_equal = primitive "eq?" (tint @> tint @> tboolean) (fun (a : int) (b : int) -> a = b);;
 let primitive_equal0 = primitive "eq0" (tint @> tboolean) (fun (a : int) -> a = 0);;
 let primitive_not = primitive "not" (tboolean @> tboolean) (not);;
@@ -1081,3 +1058,175 @@ ignore(primitive "house_p" (t_object_p @> t_boolean_p) (fun x -> x));;
 ignore(primitive "horse_p" (t_object_p @> t_boolean_p) (fun x -> x));;
 ignore(primitive "ec_unique_p" (t_model_p @> (t_object_p @> t_boolean_p) @> t_object_p) (fun x -> x));;
 
+(* Arc Primitives *)
+
+let toriginal = make_ground "original";;
+let tgrid = make_ground "grid";;
+let tobject = make_ground "object";;
+let tcolor = make_ground "color";;
+let tdir = make_ground "dir";;
+let tpixel = make_ground "pixel";;
+let tinput = make_ground "input";;
+let tposition = make_ground "position";;
+let tbase_bool = make_ground "base_bool";;
+let toutput = make_ground "output";;
+let tinvariant = make_ground "invariant";;
+
+(* AUTO generated primitives will go here. to override any implementations, redefine below. *)
+(* let primitive_color0 = primitive "color0" (tcolor) (0);; *)
+(* let primitive_color1 = primitive "color1" (tcolor) (0);; *)
+(* let primitive_color2 = primitive "color2" (tcolor) (0);; *)
+(* let primitive_color3 = primitive "color3" (tcolor) (0);; *)
+(* let primitive_color4 = primitive "color4" (tcolor) (0);; *)
+(* let primitive_color5 = primitive "color5" (tcolor) (0);; *)
+(* let primitive_color6 = primitive "color6" (tcolor) (0);; *)
+(* let primitive_color7 = primitive "color7" (tcolor) (0);; *)
+(* let primitive_color8 = primitive "color8" (tcolor) (0);; *)
+(* let primitive_color9 = primitive "color9" (tcolor) (0);; *)
+(* let primitive_dir0 = primitive "dir0" (tdir) (0);; *)
+(* let primitive_dir45 = primitive "dir45" (tdir) (0);; *)
+(* let primitive_dir90 = primitive "dir90" (tdir) (0);; *)
+(* let primitive_dir135 = primitive "dir135" (tdir) (0);; *)
+(* let primitive_dir180 = primitive "dir180" (tdir) (0);; *)
+(* let primitive_dir225 = primitive "dir225" (tdir) (0);; *)
+(* let primitive_dir270 = primitive "dir270" (tdir) (0);; *)
+(* let primitive_dir315 = primitive "dir315" (tdir) (0);; *)
+(* let primitive_0 = primitive "0" (tint) (0);; *)
+(* let primitive_1 = primitive "1" (tint) (0);; *)
+(* let primitive_2 = primitive "2" (tint) (0);; *)
+(* let primitive_3 = primitive "3" (tint) (0);; *)
+(* let primitive_4 = primitive "4" (tint) (0);; *)
+(* let primitive_5 = primitive "5" (tint) (0);; *)
+(* let primitive_6 = primitive "6" (tint) (0);; *)
+(* let primitive_7 = primitive "7" (tint) (0);; *)
+(* let primitive_8 = primitive "8" (tint) (0);; *)
+(* let primitive_9 = primitive "9" (tint) (0);; *)
+(* let primitive_True = primitive "True" (tbool) (0);; *)
+(* let primitive_False = primitive "False" (tbool) (0);; *)
+(* let primitive_get = primitive "get" (tlist(t0) @> tint @> t0) (fun x y -> x);; *)
+(* let primitive_get_first = primitive "get_first" (tlist(t0) @> t0) (fun x -> x);; *)
+(* let primitive_get_last = primitive "get_last" (tlist(t0) @> t0) (fun x -> x);; *)
+(* let primitive_length = primitive "length" (tlist(t0) @> tint) (fun x -> x);; *)
+(* let primitive_remove_head = primitive "remove_head" (tlist(t0) @> t0) (fun x -> x);; *)
+(* let primitive_sortby = primitive "sortby" (tlist(t0) @> (t0 @> t1) @> tlist(t0)) (fun x y -> x);; *)
+(* let primitive_map = primitive "map" ((tgrid @> tgrid) @> tlist(tgrid) @> tlist(tgrid)) (fun x y -> x);; *)
+(* let primitive_filter_list = primitive "filter_list" (tlist(t0) @> (t0 @> tbool) @> tlist(t0)) (fun x y -> x);; *)
+(* let primitive_compare = primitive "compare" ((t0 @> t1) @> t0 @> t0 @> tbool) (fun x y z -> x);; *)
+(* let primitive_zip = primitive "zip" (tlist(t0) @> tlist(t1) @> (t0 @> t1 @> t2) @> tlist(t2)) (fun x y z -> x);; *)
+(* let primitive_reverse = primitive "reverse_list" (tlist(t0) @> tlist(t0)) (fun x -> x);; *)
+(* let primitive_apply_colors = primitive "apply_colors" (tlist(tgrid) @> tlist(tcolor)) (fun x -> x);; *)
+(* let primitive_draw_connecting_line = primitive "draw_connecting_line" (tgrid @> tgrid @> tlist(tgrid) @> tgrid) (fun x y z -> x);; *)
+(* let primitive_draw_line = primitive "draw_line" (tgrid @> tgrid @> tdir @> tgrid) (fun x y z -> x);; *)
+(* let primitive_draw_line_slant_down = primitive "draw_line_slant_down" (toriginal @> tobject @> tgrid) (fun x y -> x);; *)
+(* let primitive_draw_line_slant_up = primitive "draw_line_slant_up" (toriginal @> tobject @> tgrid) (fun x y -> x);; *)
+let primitive_map_i_to_j = primitive "map_i_to_j" (tgrid @> tcolor @> tcolor @> tgrid) (fun x y z -> x);;
+(* let primitive_find_in_list = primitive "find_in_list" (tlist(tgrid) @> tint) (fun x -> x);; *)
+(* let primitive_find_in_grid = primitive "find_in_grid" (tgrid @> tgrid @> tposition) (fun x y -> x);; *)
+(* let primitive_filter_color = primitive "filter_color" (tgrid @> tcolor @> tgrid) (fun x y -> x);; *)
+(* let primitive_colors = primitive "colors" (tgrid @> tlist(tcolor)) (fun x -> x);; *)
+(* let primitive_color = primitive "color" (tgrid @> tcolor) (fun x -> x);; *)
+(* let primitive_objects = primitive "objects" (toriginal @> tlist(tobject)) (fun x -> x);; *)
+(* let primitive_objects_by_color = primitive "objects_by_color" (tgrid @> tlist(tgrid)) (fun x -> x);; *)
+let primitive_object = primitive "object" (tgrid @> tgrid) (fun x -> x);;
+(* let primitive_objects2 = primitive "objects2" (tgrid @> tbase_bool @> tbase_bool @> tlist(tgrid)) (fun x y z -> x);; *)
+(* let primitive_objects3 = primitive "objects3" (tgrid @> tlist(tgrid)) (fun x -> x);; *)
+(* let primitive_pixel2 = primitive "pixel2" (tcolor @> tgrid) (fun x -> x);; *)
+(* let primitive_pixel = primitive "pixel" (tint @> tint @> tgrid) (fun x y -> x);; *)
+(* let primitive_list_of = primitive "list_of" (tgrid @> tgrid @> tlist(tgrid)) (fun x y -> x);; *)
+(* let primitive_pixels = primitive "pixels" (tgrid @> tlist(tgrid)) (fun x -> x);; *)
+(* let primitive_set_shape = primitive "set_shape" (tgrid @> tposition @> tgrid) (fun x y -> x);; *)
+(* let primitive_shape = primitive "shape" (tgrid @> tposition) (fun x -> x);; *)
+let primitive_y_mirror = primitive "y_mirror" (tgrid @> tgrid) (fun x -> x);;
+let primitive_x_mirror = primitive "x_mirror" (tgrid @> tgrid) (fun x -> x);;
+
+let primitive_rotate_ccw = primitive "rotate_ccw" (tgrid @> tgrid) (fun x -> x);;
+let primitive_rotate_cw = primitive "rotate_cw" (tgrid @> tgrid) (fun x -> x);;
+
+let primitive_has_x_symmetry = primitive "has_x_symmetry" (tgrid @> tbool) (fun x -> x);;
+let primitive_has_y_symmetry = primitive "has_y_symmetry" (tgrid @> tbool) (fun x -> x);;
+let primitive_has_rotational_symmetry = primitive "has_rotational_symmetry" (tgrid @> tbool) (fun x -> x);;
+let primitive_input = primitive "input" (tinput @> tgrid) (fun x -> x);;
+let primitive_inputs = primitive "inputs" (tinput @> tlist(tgrid)) (fun x -> x);;
+let primitive_outputs = primitive "outputs" (tinput @> tlist(tgrid)) (fun x -> x);;
+(* let primitive_find_corresponding = primitive "find_corresponding" (tinput @> tgrid @> tgrid) (fun x y -> x);; *)
+(* let primitive_vstack = primitive "vstack" (tlist(tgrid) @> toutput) (fun x -> x);; *)
+(* let primitive_hstack = primitive "hstack" (tlist(tgrid) @> toutput) (fun x -> x);; *)
+let primitive_overlay = primitive "overlay" (tgrid @> tgrid @> tgrid) (fun x y -> x);;
+(* let primitive_positionless_stack = primitive "positionless_stack" (tlist(tgrid) @> toutput) (fun x -> x);; *)
+(* let primitive_stack = primitive "stack" (tlist(tgrid) @> toutput) (fun x -> x);; *)
+(* let primitive_stack_no_crop = primitive "stack_no_crop" (tlist(tgrid) @> tgrid) (fun x -> x);; *)
+let primitive_combine_grids_horizontally = primitive "combine_grids_horizontally" (tgrid @> tgrid @> tgrid) (fun x y -> x);;
+let primitive_combine_grids_vertically = primitive "combine_grids_vertically" (tgrid @> tgrid @> tgrid) (fun x y -> x);;
+(* let primitive_and = primitive "and" (tbool @> tbool @> tbool) (fun x y -> x);; *)
+(* let primitive_or = primitive "or" (tbool @> tbool @> tbool) (fun x y -> x);; *)
+(* let primitive_not = primitive "not" (tbool @> tbool) (fun x -> x);; *)
+(* let primitive_ite = primitive "ite" (tbool @> t0 @> t0 @> t0) (fun x y z -> x);; *)
+(* let primitive_eq = primitive "eq" (t0 @> t0 @> tbool) (fun x y -> x);; *)
+(* let primitive_position = primitive "position" (tgrid @> tposition) (fun x -> x);; *)
+(* let primitive_x = primitive "x" (tgrid @> tint) (fun x -> x);; *)
+(* let primitive_y = primitive "y" (tgrid @> tint) (fun x -> x);; *)
+(* let primitive_color_in = primitive "color_in" (tgrid @> tcolor @> tgrid) (fun x y -> x);; *)
+(* let primitive_color_in_grid = primitive "color_in_grid" (toutput @> tcolor @> toutput) (fun x y -> x);; *)
+(* let primitive_flood_fill = primitive "flood_fill" (tgrid @> tcolor @> tgrid) (fun x y -> x);; *)
+(* let primitive_size = primitive "size" (tgrid @> tint) (fun x -> x);; *)
+(* let primitive_area = primitive "area" (tgrid @> tint) (fun x -> x);; *)
+(* let primitive_inflate = primitive "inflate" (tgrid @> tgrid) (fun x -> x);; *)
+let primitive_top_half = primitive "top_half" (tgrid @> tgrid) (fun x -> x);;
+let primitive_bottom_half = primitive "bottom_half" (tgrid @> tgrid) (fun x -> x);;
+let primitive_left_half = primitive "left_half" (tgrid @> tgrid) (fun x -> x);;
+let primitive_right_half = primitive "right_half" (tgrid @> tgrid) (fun x -> x);;
+(* let primitive_equals_exact = primitive "equals_exact" (tgrid @> tgrid @> tbool) (fun x y -> x);; *)
+(* let primitive_color_transform = primitive "color_transform" (tgrid @> tgrid) (fun x -> x);; *)
+(* let primitive_equals_invariant = primitive "equals_invariant" (tgrid @> tgrid @> tinvariant @> tbool) (fun x y z -> x);; *)
+(* let primitive_construct_mapping = primitive "construct_mapping" ((tgrid @> tlist(tgrid)) @> (tgrid @> tlist(tgrid)) @> tinvariant @> tinput @> tlist(tgrid)) (fun x y z w -> x);; *)
+(* let primitive_construct_mapping2 = primitive "construct_mapping2" (tinvariant @> tinput @> toutput) (fun x y -> x);; *)
+(* let primitive_construct_mapping3 = primitive "construct_mapping3" ((tgrid @> t0) @> tinput @> toutput) (fun x y -> x);; *)
+(* let primitive_size_invariant = primitive "size_invariant" (tinvariant) (0);; *)
+(* let primitive_no_invariant = primitive "no_invariant" (tinvariant) (0);; *)
+(* let primitive_rotation_invariant = primitive "rotation_invariant" (tinvariant) (0);; *)
+(* let primitive_color_invariant = primitive "color_invariant" (tinvariant) (0);; *)
+(* let primitive_rows = primitive "rows" (tgrid @> tlist(tgrid)) (fun x -> x);; *)
+(* let primitive_columns = primitive "columns" (tgrid @> tlist(tgrid)) (fun x -> x);; *)
+(* let primitive_place_into_input_grid = primitive "place_into_input_grid" (tlist(tgrid) @> toutput) (fun x -> x);; *)
+(* let primitive_place_into_grid = primitive "place_into_grid" (tlist(tgrid) @> toutput) (fun x -> x);; *)
+let primitive_output = primitive "output" (tgrid @> toutput) (fun x -> x);;
+(* let primitive_contains_color = primitive "contains_color" (tgrid @> tcolor @> tbool) (fun x y -> x);; *)
+(* let primitive_T = primitive "T" (tbase_bool) (0);; *)
+(* let primitive_F = primitive "F" (tbase_bool) (0);; *)
+(* let primitive_not_pixel = primitive "not_pixel" (tgrid @> tbool) (fun x -> x);; *)
+(* END AUTO primitives. Below feel free to manually define primitives to override the auto implementation*)
+
+(* let primitive_color0 = primitive "color0" (tcolor) (0);; *)
+(* let primitive_color1 = primitive "color1" (tcolor) (1);; *)
+(* let primitive_color2 = primitive "color2" (tcolor) (2);; *)
+(* let primitive_color3 = primitive "color3" (tcolor) (3);; *)
+(* let primitive_color4 = primitive "color4" (tcolor) (4);; *)
+(* let primitive_color5 = primitive "color5" (tcolor) (5);; *)
+(* let primitive_color6 = primitive "color6" (tcolor) (6);; *)
+(* let primitive_color7 = primitive "color7" (tcolor) (7);; *)
+(* let primitive_color8 = primitive "color8" (tcolor) (8);; *)
+(* let primitive_color9 = primitive "color9" (tcolor) (9);; *)
+(* let primitive_dir0 = primitive "dir0" (tdir) (0);; *)
+(* let primitive_dir45 = primitive "dir45" (tdir) (45);; *)
+(* let primitive_dir90 = primitive "dir90" (tdir) (90);; *)
+(* let primitive_dir135 = primitive "dir135" (tdir) (135);; *)
+(* let primitive_dir180 = primitive "dir180" (tdir) (180);; *)
+(* let primitive_dir225 = primitive "dir225" (tdir) (225);; *)
+(* let primitive_dir270 = primitive "dir270" (tdir) (270);; *)
+(* let primitive_dir315 = primitive "dir315" (tdir) (315);; *)
+(* let primitive_0 = primitive "0" (tint) (0);; *)
+(* let primitive_1 = primitive "1" (tint) (1);; *)
+(* let primitive_2 = primitive "2" (tint) (2);; *)
+(* let primitive_3 = primitive "3" (tint) (3);; *)
+(* let primitive_4 = primitive "4" (tint) (4);; *)
+(* let primitive_5 = primitive "5" (tint) (5);; *)
+(* let primitive_6 = primitive "6" (tint) (6);; *)
+(* let primitive_7 = primitive "7" (tint) (7);; *)
+(* let primitive_8 = primitive "8" (tint) (8);; *)
+(* let primitive_9 = primitive "9" (tint) (9);; *)
+
+(* End Arc Primitives *)
+
+let primitive_move_down = primitive "move_down" (tgrid @> tgrid) (fun x -> x);;
+let primitive_reflect_down = primitive "reflect_down" (tgrid @> tgrid) (fun x -> x);;
+let primitive_draw_line_down = primitive "draw_line_down" (tgrid @> tgrid) (fun x -> x);;

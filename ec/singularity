@@ -47,7 +47,7 @@ From: ubuntu
     opam update
     opam switch create 4.06.1+flambda
     eval `opam config env`
-    opam install -y  ppx_jane core re2 yojson vg cairo2 camlimages menhir ocaml-protoc zmq utop jbuilder
+    opam install -y  ppx_jane core re2 yojson.1.6.0 vg cairo2 camlimages menhir.20211128 ocaml-protoc zmq utop jbuilder
     echo "
 #use "topfind";;
 #thread;;
@@ -71,4 +71,5 @@ open Core;;
     pypy3 -m pip install numpy
     pypy3 -m pip install pathos
 
-    
+    pip install --upgrade pip
+    pip install -e ../
