@@ -58,7 +58,7 @@ def multicoreEnumeration(g, tasks, _=None,
     # If we are evaluating testing tasks:
     # Make sure that each job corresponds to exactly one task
     jobs = {}
-    if solver == 'python' and CPUs > 1:
+    if solver == solveForTask_python and CPUs > 1:
         print(f"Using experimental Python parallelism with {CPUs} CPUs")
         for i, t in enumerate(tasks):
             k = (task2grammar[t], t.request, i % CPUs)
