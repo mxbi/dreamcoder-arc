@@ -55,7 +55,8 @@ args = commandlineArguments(
     topK=5, 
     pseudoCounts=30.0,
     structurePenalty=0.1,
-    solver='python'
+    solver='python',
+    CPUs=48,
     )
 
 symmetry_tasks = [30, 38, 52, 56, 66, 70, 82, 86, 105, 108, 112, 115, 116, 139, 141, 149, 151, 154, 163, 171, 176, 178, 179, 209, 210, 240, 241, 243, 248, 310, 345, 359, 360, 379, 371, 384]

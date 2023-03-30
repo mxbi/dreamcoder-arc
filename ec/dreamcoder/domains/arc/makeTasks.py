@@ -68,9 +68,9 @@ def make_arc_task(task_id, task_num=None, test=False, use_toutput=False,
     return task
 
 
-# def get_arc_task(task_num, use_toutput=False):
-#     task_id = num_to_id(task_num)
-#     return make_arc_task(task_id, task_num=task_num, use_toutput=use_toutput)
+def get_arc_task(task_num, use_toutput=False):
+    task_id = num_to_id(task_num)
+    return make_arc_task(task_id, task_num=task_num, use_toutput=use_toutput)
 
 
 # def get_eval_tasks():

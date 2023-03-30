@@ -58,12 +58,18 @@ def multicoreEnumeration(g, tasks, _=None,
     # If we are evaluating testing tasks:
     # Make sure that each job corresponds to exactly one task
     jobs = {}
-    for i, t in enumerate(tasks):
-        if testing:
-            k = (task2grammar[t], t.request, i)
-        else:
-            k = (task2grammar[t], t.request)
-        jobs[k] = jobs.get(k, []) + [t]
+    if solver == 'python' and CPUs > 1:
+        print(f"Using experimental Python parallelism with {CPUs} CPUs")
+        for i, t in enumerate(tasks):
+            k = (task2grammar[t], t.request, i % CPUs)
+            jobs[k] = jobs.get(k, []) + [t]
+    else:
+        for i, t in enumerate(tasks):
+            if testing:
+                k = (task2grammar[t], t.request, i)
+            else:
+                k = (task2grammar[t], t.request)
+            jobs[k] = jobs.get(k, []) + [t]
 
     disableParallelism = len(jobs) == 1
     parallelCallback = launchParallelProcess if not disableParallelism else lambda f, * \
@@ -154,8 +160,8 @@ def multicoreEnumeration(g, tasks, _=None,
                 g, request = j[:2]
                 bi = budgetIncrement(lowerBounds[j])
                 thisTimeout = enumerationTimeout - stopwatches[j].elapsed
-                eprint("(frontend) Launching %s (%d tasks) w/ %d CPUs. %f <= MDL < %f. Timeout %f." %
-                       (request, len(jobs[j]), allocation[j], lowerBounds[j], lowerBounds[j] + bi, thisTimeout))
+                eprint("(frontend%s) Launching %s (%d tasks) w/ %d CPUs. %f <= MDL < %f. Timeout %f." %
+                       (os.getpid(), request, len(jobs[j]), allocation[j], lowerBounds[j], lowerBounds[j] + bi, thisTimeout))
                 stopwatches[j].start()
                 parallelCallback(wrapInThread(solver),
                                  q=q, g=g, ID=nextID,
