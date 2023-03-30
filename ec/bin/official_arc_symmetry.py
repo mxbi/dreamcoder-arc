@@ -61,9 +61,9 @@ args = commandlineArguments(
 symmetry_tasks = [30, 38, 52, 56, 66, 70, 82, 86, 105, 108, 112, 115, 116, 139, 141, 149, 151, 154, 163, 171, 176, 178, 179, 209, 210, 240, 241, 243, 248, 310, 345, 359, 360, 379, 371, 384]
 training = [get_arc_task(i) for i in symmetry_tasks]
 
-task = training[0]
-task.examples = [(x, x) for x, y in task.examples]
-training[0] = task
+# task = training[0]
+# task.examples = [(x, x) for x, y in task.examples]
+# training[0] = task
 
 # iterate over wake and sleep cycles for our task
 generator = ecIterator(grammar,

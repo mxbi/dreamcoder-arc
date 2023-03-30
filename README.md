@@ -1,5 +1,16 @@
 # ARC Tools
 
+## Building container for DreamCoder
+
+```bash
+cd ec/
+sudo singularity build container.img singularity
+cd ..
+sudo singularity build container.img singularity
+```
+
+## Using arctools
+
 ```
 pip install -e .
 ```

@@ -2,20 +2,23 @@ from dreamcoder.domains.arc.arcPrimitives import *
 import dreamcoder.domains.arc.arcPrimitives as p
 from dreamcoder.domains.arc.arcInput import load_task, num_to_id
 
+# def train_examples(task_dict):
+#     # examples = [((Input(ex["input"], task_dict["train"]),),
+#     #     Grid(ex["output"])) for ex in task_dict["train"]]
+#     # examples += [((Input(ex["input"], task_dict["train"]),),
+#     #     Grid(ex["output"])) for ex in [task_dict["test"][0]]]
+#     examples = [((Grid(ex["input"]),),
+#         Grid(ex["output"])) for ex in task_dict["train"]]
+#     # examples += [((Grid(ex["input"]),),
+#     #     Grid(ex["output"])) for ex in [task_dict["test"][0]]]
+#     examples += [((Grid(ex["input"]),),
+#         Grid(ex["output"])) for ex in task_dict["test"]]
+#     return examples
 
-def train_examples(task_dict):
-    # examples = [((Input(ex["input"], task_dict["train"]),),
-    #     Grid(ex["output"])) for ex in task_dict["train"]]
-    # examples += [((Input(ex["input"], task_dict["train"]),),
-    #     Grid(ex["output"])) for ex in [task_dict["test"][0]]]
-    examples = [((Grid(ex["input"]),),
-        Grid(ex["output"])) for ex in task_dict["train"]]
-    # examples += [((Grid(ex["input"]),),
-    #     Grid(ex["output"])) for ex in [task_dict["test"][0]]]
-    examples += [((Grid(ex["input"]),),
-        Grid(ex["output"])) for ex in task_dict["test"]]
+def train_examples(task):
+    examples = [((Grid(x),), Grid(y)) for x, y in task.train]
+    examples += [((Grid(x),), Grid(y)) for x, y in task.test]
     return examples
-
 
 def test_examples(task_dict):
     # you don't get the test input/output, so you can only check for the
@@ -40,12 +43,13 @@ def make_arc_task(task_id, task_num=None, test=False, use_toutput=False,
 
     # I kept this one so as not to break old code, but I'm guessing
     # doing things by number with get_arc_task() is easier.
-    if from_eval:
-        d = load_task(task_id, task_path='data/ARC/data/evaluation/')
-    else:
-        d = load_task(task_id, task_path='data/ARC/data/training/')
+    d = load_task(task_id)
 
-    examples = test_examples(d) if test else train_examples(d)
+    if test:
+        raise NotImplementedError
+    examples = train_examples(d)
+
+    # examples = test_examples(d) if test else train_examples(d)
 
     if task_num is None:
         name = task_id
@@ -64,12 +68,12 @@ def make_arc_task(task_id, task_num=None, test=False, use_toutput=False,
     return task
 
 
-def get_arc_task(task_num, use_toutput=False):
-    task_id = num_to_id(task_num)
-    return make_arc_task(task_id, task_num=task_num, use_toutput=use_toutput)
+# def get_arc_task(task_num, use_toutput=False):
+#     task_id = num_to_id(task_num)
+#     return make_arc_task(task_id, task_num=task_num, use_toutput=use_toutput)
 
 
-def get_eval_tasks():
-    evaluation_dir = 'data/ARC/data/evaluation/'
-    task_ids = [t[:-5] for t in os.listdir(evaluation_dir)]
-    return [make_arc_task(task_id, from_eval=True) for task_id in task_ids]
+# def get_eval_tasks():
+#     evaluation_dir = 'data/ARC/data/evaluation/'
+#     task_ids = [t[:-5] for t in os.listdir(evaluation_dir)]
+#     return [make_arc_task(task_id, from_eval=True) for task_id in task_ids]

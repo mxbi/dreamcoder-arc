@@ -4,28 +4,33 @@ import os
 import numpy as np
 import re
 
-def load_task(task_id, task_path='data/ARC/data/training/'):
-    filename = task_path + task_id + '.json'
+import arctools
 
-    with open(filename, 'r') as f:
-        task_dict = json.load(f)
+def load_task(task_id):
+    return arctools.load_single(task_id)#.dreamcoder_format()
 
-    task_dict['name'] = task_id
+# def load_task(task_id, task_path='data/ARC/data/training/'):
+#     filename = task_path + task_id + '.json'
 
-    # turn to np arrays
-    train = task_dict["train"]
-    for ex in train:
-        for key in ex:
-            ex[key] = np.array(ex[key])
+#     with open(filename, 'r') as f:
+#         task_dict = json.load(f)
 
-    test=task_dict["test"]
-    for ex in test:
-        for key in ex:
-            ex[key] = np.array(ex[key])
+#     task_dict['name'] = task_id
 
-    # print(task_dict)
+#     # turn to np arrays
+#     train = task_dict["train"]
+#     for ex in train:
+#         for key in ex:
+#             ex[key] = np.array(ex[key])
 
-    return task_dict
+#     test=task_dict["test"]
+#     for ex in test:
+#         for key in ex:
+#             ex[key] = np.array(ex[key])
+
+#     # print(task_dict)
+
+#     return task_dict
 
 def num_to_id(task_num):
     with open('dreamcoder/domains/arc/task_number_ids.txt', 'r') as f:
@@ -52,26 +57,32 @@ def find_example(grid, tasks):
     return None
 
 
-
 def get_all_tasks():
-    training_dir = 'data/ARC/data/training/'
-    # take off last five chars of name to get rid of '.json'
-    task_ids = [t[:-5] for t in os.listdir(training_dir)]
+    "Gets all the training tasks"
+    trainset, testset = arctools.load_data()
 
-    def grids(task):
-        grids = []
-        for ex in task['train']:
-            grids.append(np.array(ex['input']))
-            grids.append(np.array(ex['output']))
-        for ex in task['test']:
-            grids.append(np.array(ex['input']))
-            grids.append(np.array(ex['output']))
+    # return [task.dreamcoder_format() for task in trainset]
+    return trainset
 
-        return {"name": task["name"], "grids": grids}
+# def get_all_tasks():
+#     training_dir = 'data/ARC/data/training/'
+#     # take off last five chars of name to get rid of '.json'
+#     task_ids = [t[:-5] for t in os.listdir(training_dir)]
 
-    tasks = [load_task(task_id) for task_id in task_ids]
-    tasks = [grids(task) for task in tasks]
-    return tasks
+    # def grids(task):
+    #     grids = []
+    #     for ex in task['train']:
+    #         grids.append(np.array(ex['input']))
+    #         grids.append(np.array(ex['output']))
+    #     for ex in task['test']:
+    #         grids.append(np.array(ex['input']))
+    #         grids.append(np.array(ex['output']))
+
+    #     return {"name": task["name"], "grids": grids}
+
+#     tasks = [load_task(task_id) for task_id in task_ids]
+#     tasks = [grids(task) for task in tasks]
+#     return tasks
 
 def export_tasks(path, tasks):
     # makes the json file which can be previewed through the arc interface.

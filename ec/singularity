@@ -38,7 +38,7 @@ From: ubuntu
     export PATH="/usr/local/conda/bin:$PATH"
 
     conda install -y  numpy dill pyzmq matplotlib protobuf scikit-learn scipy #vose-alias-method
-    pip install git+https://github.com/MaxHalford/vose
+    pip install git+https://github.com/MaxHalford/vose@fae179e5afa45f224204519c10957d087633ae60
     pip install dill sexpdata pygame pycairo cairocffi psutil pypng Box2D-kengz graphviz frozendict pathos
     
     conda install pytorch==1.2.0 torchvision==0.4.0 cpuonly -c pytorch
@@ -71,5 +71,6 @@ open Core;;
     pypy3 -m pip install numpy
     pypy3 -m pip install pathos
 
-    pip install --upgrade pip
-    pip install -e ../
+    # pip install --upgrade pip
+    # pip install -e ../
+    # pip install rich
