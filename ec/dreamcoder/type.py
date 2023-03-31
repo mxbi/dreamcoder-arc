@@ -5,6 +5,7 @@ class UnificationFailure(Exception):
 class Occurs(UnificationFailure):
     pass
 
+ARROW = "->"
 
 class Type(object):
     def __str__(self): return self.show(True)
@@ -126,6 +127,30 @@ class TypeConstructor(Type):
         return TypeConstructor(self.name,
                                [x.canonical(bindings) for x in self.arguments])
 
+    def ocaml_type(self):
+        if self.isArrow():
+            in_type = self.arguments[0].ocaml_type()
+            if not self.arguments[0].isArrow():
+                in_type = in_type[1:-1] # get rid of parentheses
+            out_type = self.arguments[1].ocaml_type()
+            assert len(self.arguments) == 2
+
+            assert out_type[0] == '('
+            out_type = out_type[1:-1] # get rid of outer parentheses
+            return '(' + in_type + ' @> ' + out_type + ')'
+        else:
+            name = self.name
+            if name == 'list':
+                assert not self.arguments[0].isArrow(), 'wont make correct ocaml string probably'
+                name = 'list({})'.format(self.arguments[0].ocaml_type()[1:-1])
+            return '(t' + name + ')'
+
+    def number_of_args(self):
+        if not self.isArrow():
+            return 0
+
+        return 1 + self.arguments[1].number_of_args()
+
 
 class TypeVariable(Type):
     def __init__(self, j):
@@ -141,7 +166,7 @@ class TypeVariable(Type):
         if self.v  not in mapping:
             mapping[self.v] = TypeConstructor(f"dummy_type_{len(mapping)}", [])
         return mapping[self.v]
-        
+
 
     def __eq__(self, other):
         return isinstance(other, TypeVariable) and self.v == other.v
@@ -204,6 +229,12 @@ class TypeVariable(Type):
 
     def negateVariables(self):
         return TypeVariable(-1 - self.v)
+
+    def ocaml_type(self):
+        return '(t{})'.format(self.v)
+
+    def number_of_args(self):
+        return 0
 
 
 class Context(object):

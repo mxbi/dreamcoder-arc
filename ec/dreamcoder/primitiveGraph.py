@@ -155,8 +155,8 @@ def graphPrimitives(result, prefix, view=False):
                     if str(p) in englishDescriptions:
                         thisLabel = '<<font face="boldfontname"><u>%s</u></font><br />%s>'%(englishDescriptions[str(p)],simplification[p])
                     else:
-                        eprint("WARNING: Do not have an English description of:\n",p)
-                        eprint()
+                        # eprint("WARNING: Do not have an English description of:\n",p)
+                        # eprint()
                         thisLabel = "<%s>"%simplification[p]
                     sg.node(getName(p),
                             label=thisLabel)

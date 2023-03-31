@@ -650,6 +650,16 @@ class Primitive(Program):
 
     def size(self): return 1
 
+    def ocaml_string(self):
+        out = 'let primitive_' + self.name + ' = primitive "' 
+        out += self.name + '" ' + self.tp.ocaml_type()
+        if self.tp.number_of_args() == 0:
+            out += ' (0);;'
+        else:
+            s = ' '.join('xyzwvutsrq'[0:self.tp.number_of_args()])
+            out += ' (fun ' + s + ' -> x);;'
+        return out
+
     @staticmethod
     def _parse(s,n):
         while n < len(s) and s[n].isspace(): n += 1
