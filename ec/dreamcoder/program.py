@@ -17,6 +17,8 @@ class ShiftFailure(Exception):
 class RunFailure(Exception):
     pass
 
+class PrimitiveException(Exception):
+    pass
 
 class Program(object):
     def __repr__(self): return str(self)

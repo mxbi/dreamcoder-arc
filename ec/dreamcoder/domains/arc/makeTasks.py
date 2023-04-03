@@ -1,6 +1,6 @@
 from dreamcoder.domains.arc.arcPrimitives import *
 import dreamcoder.domains.arc.arcPrimitives as p
-from dreamcoder.domains.arc.arcInput import load_task, num_to_id
+from dreamcoder.domains.arc.arcInput import load_task, num_to_id, get_all_tasks
 
 # def train_examples(task_dict):
 #     # examples = [((Input(ex["input"], task_dict["train"]),),
@@ -35,7 +35,6 @@ def test_examples(task_dict):
         Grid(ex["output"])) for i, ex in enumerate(task_dict["train"])]
     return examples
 
-
 def make_arc_task(task_id, task_num=None, test=False, use_toutput=False,
         from_eval=False):
     # task_num is an optional argument, if you want to import the task by the
@@ -62,11 +61,34 @@ def make_arc_task(task_id, task_num=None, test=False, use_toutput=False,
                 examples)
     else:
         task = Task(name,
-                arrow(tinput, tgrid),
+                arrow(tgrid, tgrid),
                 examples)
 
     return task
 
+def convert_arc_task(task, use_toutput=False):
+    examples = train_examples(task)
+
+    # examples = test_examples(d) if test else train_examples(d)
+
+    name = task.id
+
+    if use_toutput:
+        task = Task(name,
+                arrow(tinput, toutput),
+                examples)
+    else:
+        task = Task(name,
+                arrow(tgrid, tgrid),
+                examples)
+
+    return task
+
+def get_arc_train_tasks(n=None):
+    trainset = get_all_tasks()
+    if n:
+        trainset = trainset[:n]
+    return [convert_arc_task(task) for task in trainset]
 
 def get_arc_task(task_num, use_toutput=False):
     task_id = num_to_id(task_num)

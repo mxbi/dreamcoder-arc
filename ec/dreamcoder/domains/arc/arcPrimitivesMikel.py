@@ -4,9 +4,11 @@ from dreamcoder.task import Task
 from dreamcoder.grammar import Grammar
 from dreamcoder.program import Primitive
 
+from scipy.ndimage import binary_dilation
 from scipy.ndimage import measurements
 from math import sin,cos,radians,copysign
 import numpy as np
+from collections import deque
 
 MAX_GRID_LENGTH = 30
 MAX_COLOR = 9
@@ -695,7 +697,7 @@ grid_primitives = {
     # "objects": Primitive("objects", arrow(toriginal, tlist(tobject)), _objects),
     # "objects_by_color": Primitive("objects_by_color", arrow(tgrid, tlist(tgrid)), _objects_by_color),
     # # "object": Primitive("object", arrow(toriginal, tgrid), _object),
-    # "object": Primitive("object", arrow(tgrid, tgrid), _object),
+    "object": Primitive("object", arrow(tgrid, tgrid), _object),
     # "objects2": Primitive("objects2", arrow(tgrid, tbase_bool, tbase_bool, tlist(tgrid)), _objects2),
     # "objects3": Primitive("objects3", arrow(tgrid, tlist(tgrid)), lambda g: _objects2(g)(True)(True)),
     # "pixel2": Primitive("pixel2", arrow(tcolor, tgrid), _pixel2),
@@ -704,10 +706,13 @@ grid_primitives = {
     # "pixels": Primitive("pixels", arrow(tgrid, tlist(tgrid)), _pixels),
     # "set_shape": Primitive("set_shape", arrow(tgrid, tposition, tgrid), _set_shape),
     # "shape": Primitive("shape", arrow(tgrid, tposition), _shape),
-    "y_mirror": Primitive("y_mirror", arrow(tgrid, tgrid), _y_mirror),
+    # "y_mirror": Primitive("y_mirror", arrow(tgrid, tgrid), _y_mirror),
     "x_mirror": Primitive("x_mirror", arrow(tgrid, tgrid), _x_mirror),
-    "rotate_ccw": Primitive("rotate_ccw", arrow(tgrid, tgrid), _rotate_ccw),
+    # "rotate_ccw": Primitive("rotate_ccw", arrow(tgrid, tgrid), _rotate_ccw),
     "rotate_cw": Primitive("rotate_cw", arrow(tgrid, tgrid), _rotate_cw),
+    "left_half": Primitive("left_half", arrow(tgrid, tgrid), _left_half),
+    "overlay": Primitive("overlay", arrow(tgrid, tgrid, tgrid), _overlay),
+    "combine_grids_vertically": Primitive("combine_grids_vertically", arrow(tgrid, tgrid, tgrid), _combine_grids_vertically),
 
     "cut": Primitive("cut", arrow(tgrid, tlist(tgrid)), _objects),
     "filterCol": Primitive("filterCol", arrow(tgrid, tcolor, tgrid), _icecuber_filterCol_curry),
@@ -721,15 +726,87 @@ grid_primitives = {
     # "has_rotational_symmetry": Primitive("has_rotational_symmetry", arrow(tgrid, tboolean), _has_rotational_symmetry),
     }
 
+# Icecuber analysis:
+## An image has position p(x, y) and size sz(w, h).
+## Image_ is an Image&
+
+
+def compress_count_key(o):
+    """
+    Returns the number of zeros in the grid once compressed.
+    """
+    comp = _icecuber_compress(o)
+    count = np.sum(comp.grid != 0)
+    return o.grid.shape[0] * o.grid.shape[1] - count
+
+def majority_col(o):
+    """Returns the color that is most common in the grid."""
+    return np.argmax(np.bincount(o.grid.ravel()))
+
+def icecuber_fill(o):
+    """Returns the grid with all holes filled."""
+
+    a = o.grid
+    majority_colour = majority_col(o)
+    ret = np.full(o.grid.shape, majority_colour, dtype=np.int8)
+
+    # Determine the majority color of the input grid
+
+    # Create a binary mask of the input grid with True where pixels have a value of 0
+    mask = a == 0
+
+    # Create an empty binary mask for storing connected border pixels
+    connected_border = np.zeros_like(mask, dtype=bool)
+
+    # Set the border pixels in the connected_border mask
+    connected_border[0, :] = mask[0, :]
+    connected_border[-1, :] = mask[-1, :]
+    connected_border[:, 0] = mask[:, 0]
+    connected_border[:, -1] = mask[:, -1]
+
+    # Iteratively perform binary dilation until there are no changes in the connected_border mask
+    while True:
+        new_connected_border = binary_dilation(connected_border, structure=np.ones((3, 3)), mask=mask)
+        if np.array_equal(new_connected_border, connected_border):
+            break
+        connected_border = new_connected_border
+
+    # Set the connected border pixels to 0 in the `ret` grid
+    ret[connected_border] = 0
+
+    # Return the filled grid
+    return ret
+
+
+def _icecuber_interior(o):
+    filled = icecuber_fill(o)
+    filled[o.grid != 0] = 0
+    return filled
+    
+def interior_count_key(o):
+    interior = _icecuber_interior(o)
+    count = np.sum(interior.grid != 0)
+    return o.grid.shape[0] * o.grid.shape[1] - count
+
 pickmax_functions = {
     "count":     lambda l: max(l, key=lambda o: np.sum(o != 0)),
     "neg_count": lambda l: min(l, key=lambda o: -np.sum(o != 0)),
     "size":      lambda l: max(l, key=lambda o: o.grid.shape[0] * o.grid.shape[1]),
     "neg_size":  lambda l: min(l, key=lambda o: -o.grid.shape[0] * o.grid.shape[1]),
     "cols":      lambda l: max(l, key=lambda o: len(np.unique(o.grid))),
-    # TODO: couple more
+
     "components": lambda l: max(l, key=lambda o: len(_objects(o))), # SLOW!
-    # TODO: many more
+
+    "compress_count": lambda l: max(l, key=lambda o: compress_count_key(o)),
+    "neg_compress_count": lambda l: min(l, key=lambda o: -compress_count_key(o)),
+    "interior_count": lambda l: max(l, key=lambda o: interior_count_key(o)),
+    "neg_interior_count": lambda l: min(l, key=lambda o: -interior_count_key(o)),
+
+    # TODO: p.x/p.y pos/neg
+    "x_pos": lambda l: max(l, key=lambda o: o.position[0]),
+    "x_neg": lambda l: min(l, key=lambda o: o.position[0]),
+    "y_pos": lambda l: max(l, key=lambda o: o.position[1]),
+    "y_neg": lambda l: min(l, key=lambda o: o.position[1]),
 }
 
 # TODO implement these
@@ -741,7 +818,7 @@ pickmax_primitives = {
 def _input(i): return i
 
 primitive_dict = {
-        "input": Primitive("input", arrow(tinput, tgrid), _input),
+        # "input": Primitive("input", arrow(tinput, tgrid), _input),
         **grid_primitives,
         **pickmax_primitives,
         **colors,

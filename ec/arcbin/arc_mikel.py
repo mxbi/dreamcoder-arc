@@ -11,7 +11,7 @@ from dreamcoder.task import Task
 from dreamcoder.type import arrow, tint
 from dreamcoder.utilities import numberOfCPUs
 
-from dreamcoder.domains.arc.makeTasks import get_arc_task
+from dreamcoder.domains.arc.makeTasks import get_arc_task, get_arc_train_tasks
 from dreamcoder.domains.arc.main import ArcNet
 
 from dreamcoder.domains.arc.arcPrimitivesMikel import *
@@ -21,7 +21,8 @@ from dreamcoder.domains.arc.arcPrimitivesMikel import generate_ocaml_primitives
 generate_ocaml_primitives()
 
 # set the primitives to work with
-primitives = primitive_dict.values()
+p = primitive_dict#.values()
+primitives = p.values()
 # primitives = [
 #         p['object'],
 #         p['x_mirror'],
@@ -29,15 +30,8 @@ primitives = primitive_dict.values()
 #         p['rotate_cw'],
 #         # p['rotate_ccw'],
 #         p['left_half'],
-#         # p['right_half'], 
-#         # p['top_half'],
-#         # p['bottom_half'],
 #         p['overlay'],
 #         p['combine_grids_vertically'],
-#         # p['combine_grids_horizontally'], 
-#         p['input'],
-
-#         # p['move_down'], p['draw_line_down'], p['reflect_down'],
 #     ]
 
 # make a starting grammar to enumerate over
@@ -60,8 +54,9 @@ args = commandlineArguments(
     CPUs=48,
     )
 
-symmetry_tasks = range(400) #[30, 38, 52, 56, 66, 70, 82, 86, 105, 108, 112, 115, 116, 139, 141, 149, 151, 154, 163, 171, 176, 178, 179, 209, 210, 240, 241, 243, 248, 310, 345, 359, 360, 379, 371, 384]
-training = [get_arc_task(i) for i in symmetry_tasks]
+# symmetry_tasks = range(400) #[30, 38, 52, 56, 66, 70, 82, 86, 105, 108, 112, 115, 116, 139, 141, 149, 151, 154, 163, 171, 176, 178, 179, 209, 210, 240, 241, 243, 248, 310, 345, 359, 360, 379, 371, 384]
+# training = [(i) for i in symmetry_tasks]
+training = get_arc_train_tasks()
 
 # iterate over wake and sleep cycles for our task
 generator = ecIterator(grammar,
