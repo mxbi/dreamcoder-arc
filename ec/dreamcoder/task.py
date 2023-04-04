@@ -57,9 +57,14 @@ class Task(object):
             for a in x:
                 f = f(a)
             return f
-        except Exception as e:
+        # If an error is expected, we silently skip it. Otherwise, we print the traceback.
+        except PrimitiveException as e:
             pass
-            # traceback.print_exc()
+        except KeyboardInterrupt:
+            raise
+        except:
+            print(f.body)
+            traceback.print_exc()
 
     @property
     def supervision(self):

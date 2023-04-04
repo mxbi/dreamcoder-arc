@@ -1073,7 +1073,6 @@ let toutput = make_ground "output";;
 let tinvariant = make_ground "invariant";;
 
 (* AUTO generated primitives will go here. to override any implementations, redefine below. *)
-let primitive_object = primitive "object" (tgrid @> tgrid) (fun x -> x);;
 let primitive_x_mirror = primitive "x_mirror" (tgrid @> tgrid) (fun x -> x);;
 let primitive_rotate_cw = primitive "rotate_cw" (tgrid @> tgrid) (fun x -> x);;
 let primitive_left_half = primitive "left_half" (tgrid @> tgrid) (fun x -> x);;
@@ -1082,8 +1081,9 @@ let primitive_combine_grids_vertically = primitive "combine_grids_vertically" (t
 let primitive_cut = primitive "cut" (tgrid @> tlist(tgrid)) (fun x -> x);;
 let primitive_filterCol = primitive "filterCol" (tgrid @> tcolor @> tgrid) (fun x y -> x);;
 let primitive_colShape = primitive "colShape" (tgrid @> tcolor @> tgrid) (fun x y -> x);;
-let primitive_composeGrowing = primitive "composeGrowing" (tlist(tgrid) @> tgrid) (fun x -> x);;
 let primitive_compress = primitive "compress" (tgrid @> tgrid) (fun x -> x);;
+let primitive_mklist = primitive "mklist" (tgrid @> tgrid @> tlist(tgrid)) (fun x y -> x);;
+let primitive_mkcons = primitive "mkcons" (tgrid @> tlist(tgrid) @> tlist(tgrid)) (fun x y -> x);;
 let primitive_pickmax_count = primitive "pickmax_count" (tlist(tgrid) @> tgrid) (fun x -> x);;
 let primitive_pickmax_neg_count = primitive "pickmax_neg_count" (tlist(tgrid) @> tgrid) (fun x -> x);;
 let primitive_pickmax_size = primitive "pickmax_size" (tlist(tgrid) @> tgrid) (fun x -> x);;

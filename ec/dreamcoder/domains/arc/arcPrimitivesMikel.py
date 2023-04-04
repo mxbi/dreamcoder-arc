@@ -387,6 +387,8 @@ def _combine_grids_horizontally(g1):
     
 def _combine_grids_vertically(g1):
     def combine_grids_vertically(g1, g2):
+        if g1.grid.shape[1] != g2.grid.shape[1]:
+            raise PrimitiveException("combine_grids_vertically: grids must have same width")
         m1 = np.copy(g1.grid)
         m2 = np.copy(g2.grid)
         m = np.concatenate([m1, m2])
@@ -467,7 +469,9 @@ def _stack_no_crop(l):
     stackedgrid = np.zeros(shape=l[0].grid.shape)
     for g in l:
         # mask later additions
-        stackedgrid += g.grid * (stackedgrid == 0)
+        commonsize = np.minimum(stackedgrid.shape, g.grid.shape)
+        # stackedgrid += g.grid * (stackedgrid == 0)
+        stackedgrid[:commonsize[0], :commonsize[1]] += g.grid[:commonsize[0], :commonsize[1]] * (stackedgrid[:commonsize[0], :commonsize[1]] == 0)
 
     return Grid(stackedgrid.astype("int"))
 
@@ -563,6 +567,9 @@ def _bottom_half(g):
     return Grid(g.grid[int(len(g.grid)/2):, :])
 
 def _left_half(g):
+    # Raise PrimitiveException if result of this will be empty
+    if g.grid.shape[1] < 2:
+        raise PrimitiveException("left_half: too small")
     return Grid(g.grid[:, 0:int(len(g.grid[0])/2)])
 
 def _right_half(g):
@@ -619,6 +626,8 @@ def _icecuber_composeGrowing(l):
 # Extract minimal sub-image containing all non-zero pixels.
 def _icecuber_compress(g):
     # Thanks to https://stackoverflow.com/a/39466129/5128131
+    if np.max(g.grid) == 0:
+        raise PrimitiveException("compress: image is empty")
     true_points = np.argwhere(g.grid)
     top_left = true_points.min(axis=0)
     bottom_right = true_points.max(axis=0)
@@ -697,7 +706,7 @@ grid_primitives = {
     # "objects": Primitive("objects", arrow(toriginal, tlist(tobject)), _objects),
     # "objects_by_color": Primitive("objects_by_color", arrow(tgrid, tlist(tgrid)), _objects_by_color),
     # # "object": Primitive("object", arrow(toriginal, tgrid), _object),
-    "object": Primitive("object", arrow(tgrid, tgrid), _object),
+    # "object": Primitive("object", arrow(tgrid, tgrid), _object),
     # "objects2": Primitive("objects2", arrow(tgrid, tbase_bool, tbase_bool, tlist(tgrid)), _objects2),
     # "objects3": Primitive("objects3", arrow(tgrid, tlist(tgrid)), lambda g: _objects2(g)(True)(True)),
     # "pixel2": Primitive("pixel2", arrow(tcolor, tgrid), _pixel2),
@@ -717,8 +726,10 @@ grid_primitives = {
     "cut": Primitive("cut", arrow(tgrid, tlist(tgrid)), _objects),
     "filterCol": Primitive("filterCol", arrow(tgrid, tcolor, tgrid), _icecuber_filterCol_curry),
     "colShape": Primitive("colShape", arrow(tgrid, tcolor, tgrid), _icecuber_colShape_curry),
-    "composeGrowing": Primitive("composeGrowing", arrow(tlist(tgrid), tgrid), _icecuber_composeGrowing),
+    # "composeGrowing": Primitive("composeGrowing", arrow(tlist(tgrid), tgrid), _icecuber_composeGrowing),
     "compress": Primitive("compress", arrow(tgrid, tgrid), _icecuber_compress),
+    "mklist": Primitive("mklist", arrow(tgrid, tgrid, tlist(tgrid)), lambda x: lambda y: [x, y]),
+    "mkcons": Primitive("mkcons", arrow(tgrid, tlist(tgrid), tlist(tgrid)), lambda x: lambda y: [x] + y),
     # Rigid replaced by rotate & mirror
     
     # "has_x_symmetry": Primitive("has_x_symmetry", arrow(tgrid, tboolean), _has_x_symmetry),
@@ -781,7 +792,7 @@ def icecuber_fill(o):
 def _icecuber_interior(o):
     filled = icecuber_fill(o)
     filled[o.grid != 0] = 0
-    return filled
+    return Grid(filled)
     
 def interior_count_key(o):
     interior = _icecuber_interior(o)
@@ -809,9 +820,17 @@ pickmax_functions = {
     "y_neg": lambda l: min(l, key=lambda o: o.position[1]),
 }
 
+def wrap_pickmax(f):
+    """Check that the list is not empty before applying pickmax"""
+    def f_(l):
+        if not len(l):
+            raise PrimitiveException("pickmax: empty list")
+        return f(l)
+    return f_
+
 # TODO implement these
 pickmax_primitives = {
-    f"pickmax_{key}": Primitive(f"pickmax_{key}", arrow(tlist(tgrid), tgrid), func)
+    f"pickmax_{key}": Primitive(f"pickmax_{key}", arrow(tlist(tgrid), tgrid), wrap_pickmax(func))
     for key, func in pickmax_functions.items()
 }
 

@@ -549,7 +549,9 @@ class Abstraction(Program):
         return "(lambda %s)" % (self.body.show(False))
 
     def evaluate(self, environment):
-        return lambda x: self.body.evaluate([x] + environment)
+        fun = lambda x: self.body.evaluate([x] + environment)
+        fun.body = self.body # debug annotation
+        return fun
 
     def betaReduce(self):
         b = self.body.betaReduce()
@@ -593,6 +595,10 @@ class Abstraction(Program):
         while n < len(s) and s[n].isspace(): n += 1
         n = Program.parseConstant(s,n,')')
         return Abstraction(b), n
+    
+    def __repr__(self):
+        return "Abstraction({})".format(self.body)
+
 
 
 class Primitive(Program):

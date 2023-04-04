@@ -35,7 +35,7 @@ def arc_assert(boolean, message=None):
     """
     if not boolean:
         # print('ValueError')
-        raise ValueError(message)
+        raise PrimitiveException(message)
 
 
 class Grid():
