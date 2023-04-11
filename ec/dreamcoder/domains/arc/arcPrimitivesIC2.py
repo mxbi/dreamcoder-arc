@@ -24,13 +24,6 @@ Size = NewType("Size", Tuple[int, int])
 
 tcount = baseType("count")
 Count = NewType("Count", int)
-
-typemap: Dict[Type, TypeConstructor] = {
-    Colour: tcolour,
-    Position: tpos,
-    Size: tsize,
-    Count: tcount
-}
     
 tgrid = baseType("grid") # Any grid. Position is always included
 class Grid():
@@ -49,8 +42,7 @@ class Grid():
         self.cutout = cutout
         if cutout:
             self.grid, (xpos, ypos) = Grid.cutout(grid)
-            self.position[0] += xpos
-            self.position[1] += ypos
+            self.position = (self.position[0] + xpos, self.position[1] + ypos)
         else:
             self.grid = grid
 
@@ -71,8 +63,7 @@ class Grid():
         """
         position = self.position
         if offset:
-            position[0] += offset[0]
-            position[1] += offset[1]
+            position = (position[0] + offset[0], position[1] + offset[1])
 
         return Grid(grid, position, cutout)
     
@@ -82,8 +73,24 @@ class Grid():
         """
         return np.count_nonzero(self.grid)
 
+    def __eq__(self, other) -> bool:
+        """
+        Score a grid. Returns True iff the two grids are equal, ignoring position
+        """
+        if isinstance(other, Grid):
+            return self.size == other.size and (self.grid == other.grid).all()
+        return False
+
     def __repr__(self):
         return f"Grid({self.grid.shape[0]}x{self.grid.shape[1]} at {self.position})"
+    
+typemap: Dict[Type, TypeConstructor] = {
+    Colour: tcolour,
+    Position: tpos,
+    Size: tsize,
+    Count: tcount,
+    Grid: tgrid,
+}
 
 def primitive_assert(boolean, message=None):
     """
@@ -100,7 +107,7 @@ def ic_invert(g: Grid) -> Grid:
     Replaces all colours with zeros, and replaces the zeros with the first colour
     In our case, we replace it with the most common colour (arbitrary choice)
     """
-    mode = np.argmax(np.bincount(g.grid)[1:])+1 # skip 0
+    mode = np.argmax(np.bincount(g.grid.ravel())[1:])+1 # skip 0
 
     grid = np.zeros_like(g.grid)
     grid[g.grid == 0] = mode
@@ -178,7 +185,7 @@ def topcol(g: Grid) -> Colour:
     Returns the most common colour, excluding black.
     majCol in icecuber.
     """
-    return np.argmax(np.bincount(g.grid)[1:])+1
+    return np.argmax(np.bincount(g.grid.ravel())[1:])+1
 
 ## Rigid transformations
 
@@ -216,7 +223,7 @@ def countPixels(g: Grid) -> Count:
 
 def countColours(g: Grid) -> Count:
     """Return the number of unique colours in the grid, excluding zero"""
-    return np.count_nonzero(np.bincount(g.grid)[1:])
+    return np.count_nonzero(np.bincount(g.grid.ravel())[1:])
 
 def countComponents(g: Grid) -> Count:
     """
@@ -427,7 +434,7 @@ def ic_spread_minor(g: Grid) -> Grid:
     output_grid = np.copy(g.grid)
 
     # Reproduce the done array
-    done = np.bool(g.grid & (g.grid != np.bincount(g.grid.flatten()).argmax()))
+    done = np.bool(g.grid & (g.grid != np.bincount(g.grid.ravel()).argmax()))
     queue = deque([(row, col, g.grid[row, col]) for row, col in zip(*np.where(done))])
 
     # Loop through the queue
@@ -619,7 +626,7 @@ def _icecuber_interior(o):
     
 def _interior_count_key(o):
     interior = _icecuber_interior(o)
-    count = np.sum(interior.grid != 0)
+    count = np.sum(interior != 0)
     return o.grid.shape[0] * o.grid.shape[1] - count
 
 pickmax_functions = {
@@ -629,10 +636,10 @@ pickmax_functions = {
     "neg_size":  lambda l: min(l, key=lambda o: -o.grid.shape[0] * o.grid.shape[1]),
     "cols":      lambda l: max(l, key=lambda o: len(np.unique(o.grid))),
 
-    "components": lambda l: max(l, key=lambda o: len(countComponents(o))), # SLOW!
+    # "components": lambda l: max(l, key=lambda o: len(countComponents(o))), # SLOW!
 
-    "compress_count": lambda l: max(l, key=lambda o: _compress_count_key(o)),
-    "neg_compress_count": lambda l: min(l, key=lambda o: -_compress_count_key(o)),
+    # "compress_count": lambda l: max(l, key=lambda o: _compress_count_key(o)), # TODO
+    # "neg_compress_count": lambda l: min(l, key=lambda o: -_compress_count_key(o)), # TODO
     "interior_count": lambda l: max(l, key=lambda o: _interior_count_key(o)),
     "neg_interior_count": lambda l: min(l, key=lambda o: -_interior_count_key(o)),
 
@@ -687,7 +694,7 @@ def ic_composegrowing(l: List[Grid]) -> Grid:
         ystart = g.position[1] - ypos
 
         # slice returns a view, assignment to this modifies the original array
-        slice = newgrid[xstart:xstart+g.size[0], ystart:ystart+g.size[1]]
+        slice = newgrid.grid[xstart:xstart+g.size[0], ystart:ystart+g.size[1]]
 
         mask = np.nonzero(g.grid)
         slice[mask] = g.grid[mask]
@@ -695,6 +702,18 @@ def ic_composegrowing(l: List[Grid]) -> Grid:
     return newgrid
 
 # TODO: stackLine, myStack, pickMaxes, pickNotMaxes
+
+
+#############################
+# CUSTOM
+#############################
+
+def mklist(g: Grid, h: Grid) -> List[Grid]:
+    return [g, h]
+
+# cons is taken so we use lcons
+def lcons(g: Grid, h: List[Grid]) -> List[Grid]:
+    return [g] + h
 
 #############################
 # PRIMITIVE GENERATION
@@ -722,43 +741,48 @@ class PrimitiveBank:
         
         raise TypeError(f"Annotation {anno} has no corresponding DreamCoder type")
 
-    def register(self, f: Callable, name: str=None, type: TypeConstructor=None, autocurry: bool=True):
+    def register(self, f: Callable, name: str=None, typesig: List[TypeConstructor]=None, autocurry: bool=True):
         if name is None:
             name = f.__name__
             if name == '<lambda>':
                 raise ValueError('<lambda> passed to Primitive constructor, name must be specified')
             
-        if type is None:
+        fn_sig = inspect.signature(f)
+        params = list(fn_sig.parameters.items())
+        param_count = len(params)
+        if typesig is None:
             # Generate a DreamCoder type signature for this function by inspection
             arrow_args = []
-            fn_sig = inspect.signature(f)
-            params = list(fn_sig.parameters.items())
+
             for arg, argtype in params:
                 anno = argtype.annotation
                 arrow_args.append(self.cvt_type(anno))
 
-            dc_type = arrow(*arrow_args, self.cvt_type(fn_sig.return_annotation))
-        else:
-            dc_type = type
+            typesig = arrow_args + [self.cvt_type(fn_sig.return_annotation)    ]
+
+        dc_type = arrow(*typesig)
 
         # This function has more than 1 input and needs to be curried
         # We have special cases for 2/3 params because these are significantly faster
-        if autocurry and len(params) > 1:
-            if len(params) == 2:
-                f = lambda x: lambda y: f(x, y)
-            elif len(params) == 3:
-                f = lambda x: lambda y: lambda z: f(x, y, z)
+        if autocurry and param_count > 1:
+            if param_count == 2:
+                func = lambda x: lambda y: f(x, y)
+            elif param_count == 3:
+                func = lambda x: lambda y: lambda z: f(x, y, z)
             else:
                 def curry(f, n, args):
                     if n:
                         return lambda x: curry(f, n-1, args + [x])
                     return f(*args)
-                f = curry(f, len(params), [])
+                func = curry(f, param_count, [])
+        else:
+            func = f
 
         if self.verbose:
             print(f"Registered {name} with inferred type {dc_type}.")
 
-        primitive = Primitive(name, dc_type, f)
+        primitive = Primitive(name, dc_type, func)
+        primitive.typesig = typesig # Allow later reflection
         self.primitives[name] = primitive
     
     def registerMany(self, funcs: List[Callable]):
@@ -783,17 +807,17 @@ p.register(getsize)
 
 #hull?
 p.register(ic_toorigin)
-p.register(ic_fill)
-p.register(ic_interior)
-p.register(ic_interior2)
-p.register(ic_border)
+# p.register(ic_fill)
+# p.register(ic_interior)
+# p.register(ic_interior2)
+# p.register(ic_border)
 p.register(ic_center)
 p.register(topcol)
 
 # rigid?
 # count?
-for dir, f in smear_functions.items():
-    p.register(f, f"smear{dir}", arrow(tgrid, tgrid))
+# for dir, f in smear_functions.items():
+    # p.register(f, f"smear{dir}", arrow(tgrid, tgrid))
 
 p.register(ic_makeborder)
 p.register(ic_makeborder2)
@@ -802,9 +826,9 @@ p.register(ic_makeborder2_maj)
 p.register(ic_compress2)
 p.register(ic_compress3)
 
-p.register(ic_connectX, "ic_connectX", arrow(tgrid, tgrid))
-p.register(ic_connectY, "ic_connectY", arrow(tgrid, tgrid))
-p.register(ic_connectXY, "ic_connectY", arrow(tgrid, tgrid))
+p.register(ic_connectX, "ic_connectX", [tgrid, tgrid])
+p.register(ic_connectY, "ic_connectY", [tgrid, tgrid])
+p.register(ic_connectXY, "ic_connectY", [tgrid, tgrid])
 
 # spreadcols?
 p.registerMany([left_half, right_half, top_half, bottom_half])
@@ -822,13 +846,17 @@ p.registerMany([
     ic_splitall,
     ic_splitcolumns,
     ic_splitrows,
-    ic_insidemarked,
+    # ic_insidemarked,
     # gravity?
 ])
 
-for name, func in pickmax_functions:
-    p.register(func, name, arrow(list(tgrid, tgrid)))
+for name, func in pickmax_functions.items():
+    p.register(func, name, [tlist(tgrid), tgrid])
 
 p.register(ic_pickunique)
 p.register(ic_composegrowing)
 # stackline, mystrack, pickmaxes, picknotmaxes?
+
+p.registerMany([mklist, lcons])
+
+print(f"Registered {len(p.primitives)} total primitives.")

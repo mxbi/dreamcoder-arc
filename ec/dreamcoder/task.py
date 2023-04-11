@@ -63,8 +63,9 @@ class Task(object):
         except KeyboardInterrupt:
             raise
         except:
-            print(f.body)
-            traceback.print_exc()
+            pass
+            # print(f.body)
+            # traceback.print_exc()
 
     @property
     def supervision(self):
@@ -102,6 +103,7 @@ class Task(object):
                         signal.signal(signal.SIGVTALRM, lambda *_: None)
                         signal.setitimer(signal.ITIMER_VIRTUAL, 0)
                     return False
+                # print(p, y)
 
             return True
         # except e:

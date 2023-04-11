@@ -1,5 +1,5 @@
-from dreamcoder.domains.arc.arcPrimitives import *
-import dreamcoder.domains.arc.arcPrimitives as p
+from dreamcoder.domains.arc.arcPrimitivesIC2 import *
+import dreamcoder.domains.arc.arcPrimitivesIC2 as p
 from dreamcoder.domains.arc.arcInput import load_task, num_to_id, get_all_tasks
 
 # def train_examples(task_dict):
