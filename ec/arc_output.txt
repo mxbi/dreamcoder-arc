@@ -1,0 +1,60 @@
+Registered ic_filtercol with inferred type grid -> colour -> grid.
+Registered ic_erasecol with inferred type grid -> colour -> grid.
+Registered setcol with inferred type grid -> colour -> grid.
+Registered getpos with inferred type grid -> pos.
+Registered getsize with inferred type grid -> size.
+Registered ic_toorigin with inferred type grid -> grid.
+Registered ic_center with inferred type grid -> grid.
+Registered topcol with inferred type grid -> colour.
+Registered countPixels with inferred type grid -> count.
+Registered countColours with inferred type grid -> count.
+Registered countToX with inferred type count -> colour -> grid.
+Registered countToY with inferred type count -> colour -> grid.
+Registered countToXY with inferred type count -> colour -> grid.
+Registered ic_makeborder with inferred type grid -> grid.
+Registered ic_makeborder2 with inferred type grid -> grid.
+Registered ic_makeborder2_maj with inferred type grid -> grid.
+Registered ic_compress2 with inferred type grid -> grid.
+Registered ic_compress3 with inferred type grid -> grid.
+Registered ic_connectX with inferred type grid -> grid.
+Registered ic_connectY with inferred type grid -> grid.
+Registered ic_connectY with inferred type grid -> grid.
+Registered left_half with inferred type grid -> grid.
+Registered right_half with inferred type grid -> grid.
+Registered top_half with inferred type grid -> grid.
+Registered bottom_half with inferred type grid -> grid.
+Registered ic_embed with inferred type grid -> grid -> grid.
+Registered ic_wrap with inferred type grid -> grid -> grid.
+Registered ic_cut with inferred type grid -> list(grid).
+Registered ic_splitcols with inferred type grid -> list(grid).
+Registered ic_splitall with inferred type grid -> list(grid).
+Registered ic_splitcolumns with inferred type grid -> list(grid).
+Registered ic_splitrows with inferred type grid -> list(grid).
+Registered pickmax_count with inferred type list(grid) -> grid.
+Registered pickmax_neg_count with inferred type list(grid) -> grid.
+Registered pickmax_size with inferred type list(grid) -> grid.
+Registered pickmax_neg_size with inferred type list(grid) -> grid.
+Registered pickmax_cols with inferred type list(grid) -> grid.
+Registered pickmax_interior_count with inferred type list(grid) -> grid.
+Registered pickmax_neg_interior_count with inferred type list(grid) -> grid.
+Registered pickmax_x_pos with inferred type list(grid) -> grid.
+Registered pickmax_x_neg with inferred type list(grid) -> grid.
+Registered pickmax_y_pos with inferred type list(grid) -> grid.
+Registered pickmax_y_neg with inferred type list(grid) -> grid.
+Registered ic_pickunique with inferred type list(grid) -> grid.
+Registered ic_composegrowing with inferred type list(grid) -> grid.
+Registered mklist with inferred type grid -> grid -> list(grid).
+Registered lcons with inferred type grid -> list(grid) -> list(grid).
+Registered c1 with inferred type colour.
+Registered c2 with inferred type colour.
+Registered c3 with inferred type colour.
+Registered c4 with inferred type colour.
+Registered c5 with inferred type colour.
+Registered c6 with inferred type colour.
+Registered c7 with inferred type colour.
+Registered c8 with inferred type colour.
+Registered c9 with inferred type colour.
+Registered 55 total primitives.
+CUDA is available?: False
+using cuda?: False
+Using experimental Python parallelism with 48 CPUs

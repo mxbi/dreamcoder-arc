@@ -17,6 +17,7 @@ from dreamcoder.domains.arc.main import ArcNet
 from dreamcoder.domains.arc import arcPrimitivesIC2
 
 primitives = arcPrimitivesIC2.p.primitives.values()
+arcPrimitivesIC2.p.generate_ocaml_primitives()
 
 # make a starting grammar to enumerate over
 grammar = Grammar.uniform(primitives)

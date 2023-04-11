@@ -19,7 +19,7 @@ Colour = NewType("Colour", int)
 tpos = baseType("pos") # Position-only type
 Position = NewType("Position", Tuple[int, int])
 
-tsize = baseType("tsize")
+tsize = baseType("size")
 Size = NewType("Size", Tuple[int, int])
 
 tcount = baseType("count")
@@ -795,29 +795,75 @@ class PrimitiveBank:
                 print(f"Error occured on {f}")
                 raise
 
+    @staticmethod
+    def parse_primitive_names(ocaml_contents):
+        contents = ''.join([c[:-1] for c in ocaml_contents if c[0:2] + c[-3:-1] != '(**)'])
+        contents = contents.split('primitive "')[1:]
+        primitives = [p[:p.index('"')] for p in contents if '"' in p]
+        return primitives
+
+    def generate_ocaml_primitives(self):
+        primitives = list(self.primitives.values())
+
+        with open("solvers/program.ml", "r") as f:
+            contents = f.readlines()
+
+        start_ix = min([i for i in range(len(contents)) if contents[i][0:7] == '(* AUTO'])
+        end_ix = min([i for i in range(len(contents)) if contents[i][0:11] == '(* END AUTO'])
+
+        non_auto_contents = contents[0:start_ix+1] + contents[end_ix:]
+        # get the existing primitive names. We won't auto-create any primitives
+        # whose name matches an existing name.
+        existing_primitives = self.parse_primitive_names(non_auto_contents)
+
+        lines = [p.ocaml_string() + '\n' for p in primitives
+                if p.name not in existing_primitives]
+
+        for p in primitives:
+            if p.name in existing_primitives:
+                print('Primitive {} already exists, skipping ocaml code generation for it'.format(p.name))
+
+        contents = contents[0:start_ix+1] + lines + contents[end_ix:]
+
+        with open("solvers/program.ml", "w") as f:
+            f.write(''.join(contents))
+
 p = PrimitiveBank(typemap, verbose=True)
 
-p.register(ic_filtercol)
-p.register(ic_erasecol)
-p.register(setcol)
+# Redo the above
+p.registerMany([
+    ic_filtercol,
+    ic_erasecol,
+    setcol,
 
-# p.register(ic_compress)
-p.register(getpos)
-p.register(getsize)
+    # ic_compress,
+    getpos,
+    getsize,
 
-#hull?
-p.register(ic_toorigin)
-# p.register(ic_fill)
-# p.register(ic_interior)
-# p.register(ic_interior2)
-# p.register(ic_border)
-p.register(ic_center)
-p.register(topcol)
+    #hull?
+    ic_toorigin,
+    # ic_fill,
+    # ic_interior,
+    # ic_interior2,
+    # ic_border,
+    ic_center,
+    topcol
+])
 
 # rigid?
 # count?
 # for dir, f in smear_functions.items():
     # p.register(f, f"smear{dir}", arrow(tgrid, tgrid))
+
+p.registerMany([
+    countPixels,
+    countColours,
+    # countComponents,
+
+    countToX,
+    countToY,
+    countToXY,
+])
 
 p.register(ic_makeborder)
 p.register(ic_makeborder2)
@@ -851,12 +897,17 @@ p.registerMany([
 ])
 
 for name, func in pickmax_functions.items():
-    p.register(func, name, [tlist(tgrid), tgrid])
+    p.register(func, f"pickmax_{name}", [tlist(tgrid), tgrid])
 
 p.register(ic_pickunique)
 p.register(ic_composegrowing)
 # stackline, mystrack, pickmaxes, picknotmaxes?
 
 p.registerMany([mklist, lcons])
+
+# Add ground colours
+# Skip colour 0 because this doesnt make much sense as an input to colour functions
+for i in range(1, 10):
+    p.register(lambda: i, f"c{i}", [tcolour])
 
 print(f"Registered {len(p.primitives)} total primitives.")

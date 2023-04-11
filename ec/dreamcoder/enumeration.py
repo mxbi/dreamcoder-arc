@@ -99,6 +99,8 @@ def multicoreEnumeration(g, tasks, _=None,
         if solver_str=="bottom":
             return 6
         else:
+            if lb < 10: # Fast startup
+                return 10 - lb
             return 1.5
 
     def maximumFrontiers(j):
