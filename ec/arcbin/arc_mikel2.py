@@ -12,7 +12,7 @@ from dreamcoder.type import arrow, tint
 from dreamcoder.utilities import numberOfCPUs
 
 from dreamcoder.domains.arc.makeTasks import get_arc_task, get_arc_train_tasks
-from dreamcoder.domains.arc.main import ArcNet
+from dreamcoder.domains.arc.main import ArcNet, MikelArcNet
 
 from dreamcoder.domains.arc import arcPrimitivesIC2
 
@@ -27,8 +27,9 @@ args = commandlineArguments(
     enumerationTimeout=10, 
     aic=0.1,
     iterations=1, 
-    recognitionTimeout=120, 
-    # featureExtractor=ArcNet,
+    recognitionTimeout=10, 
+    featureExtractor=MikelArcNet,
+    useRecognitionModel=True,
     a=3, 
     maximumFrontier=10, 
     topK=5, 

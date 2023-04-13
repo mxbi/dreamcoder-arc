@@ -100,8 +100,8 @@ def multicoreEnumeration(g, tasks, _=None,
             return 6
         else:
             if lb < 10: # Fast startup
-                return 10 - lb
-            return 1.5
+                return 12 - lb
+            return 2
 
     def maximumFrontiers(j):
         tasks = jobs[j]

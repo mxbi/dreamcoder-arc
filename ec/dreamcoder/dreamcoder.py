@@ -1040,7 +1040,7 @@ def addTaskMetrics_(result, path):
     updateTaskSummaryMetrics(result.recognitionTaskMetrics, result.recognitionModel.taskHiddenStates(everyTask), 'every_hiddenState')
     g = result.grammars[-2] # the final entry in result.grammars is a grammar that we have not used yet
     updateTaskSummaryMetrics(result.recognitionTaskMetrics, {f.task: f.expectedProductionUses(g)
-                                                             for f in result.taskSolutions.values()
+                                                             for f in resulret.taskSolutions.values()
                                                              if len(f) > 0},
                              'expectedProductionUses')
     updateTaskSummaryMetrics(result.recognitionTaskMetrics, {f.task: f.expectedProductionUses(g)

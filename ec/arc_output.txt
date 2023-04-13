@@ -58,3 +58,7 @@ Registered 55 total primitives.
 CUDA is available?: False
 using cuda?: False
 Using experimental Python parallelism with 48 CPUs
+ecIterator count 0
+Using experimental Python parallelism with 48 CPUs
+ecIterator count 1
+Using experimental Python parallelism with 48 CPUs
