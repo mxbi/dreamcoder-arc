@@ -10,6 +10,7 @@ from scipy.ndimage import measurements
 from math import sin,cos,radians,copysign
 import numpy as np
 from collections import deque
+from statistics import mode
 
 from typing import Tuple, NewType, List, Callable, Dict, Type
 
@@ -119,7 +120,7 @@ def ic_invert(g: Grid) -> Grid:
     grid[g.grid == 0] = mode
     return g.newgrid(grid)
 
-def ic_filtercol(g: Grid, c: Colour) -> Grid:
+def ic_filtercol(c: Colour, g: Grid) -> Grid:
     "Remove all colours except the selected colour"
     primitive_assert(c != 0, "filtercol with 0 has no effect")
 
@@ -127,14 +128,14 @@ def ic_filtercol(g: Grid, c: Colour) -> Grid:
     grid[grid != c] = 0
     return g.newgrid(grid)
 
-def ic_erasecol(g: Grid, c: Colour) -> Grid:
+def ic_erasecol(c: Colour, g: Grid) -> Grid:
     "Remove a specified colour from the grid, keeping others intact"
     primitive_assert(c != 0, "erasecol with 0 has no effect")
     grid = np.copy(g.grid)
     grid[grid == c] = 0
     return g.newgrid(grid)
 
-def setcol(g: Grid, c: Colour) -> Grid:
+def setcol(c: Colour, g: Grid) -> Grid:
     """
     Set all pixels in the grid to the specified colour.
     This was named colShape in icecuber. 
@@ -143,6 +144,16 @@ def setcol(g: Grid, c: Colour) -> Grid:
 
     grid = np.zeros_like(g.grid)
     grid[np.nonzero(grid)] == c
+    return g.newgrid(grid)
+
+def set_bg(c: Colour, g: Grid) -> Grid:
+    """
+    Set all zero-pixels to the specified colour
+    """
+    primitive_assert(c != 0, "background with 0 has no effect")
+
+    grid = np.copy(g.grid)
+    grid[grid == 0] = c
     return g.newgrid(grid)
 
 def ic_compress(g: Grid) -> Grid:
@@ -162,7 +173,7 @@ def ic_toorigin(g: Grid) -> Grid:
     return Grid(g.grid)
 
 struct4 = np.array([[0,1,0],[1,1,1],[0,1,0]])
-def fillobj(g: Grid, c: Colour) -> Grid:
+def fillobj(c: Colour, g: Grid) -> Grid:
     """
     Fill in any closed objects in the grid with a specified colour.
     The 4-connectedness is used to determine what is a closed object.
@@ -182,7 +193,7 @@ def ic_fill(g: Grid) -> Grid:
     Note that like Icecuber, this also colours everything not connected to the border with the most common colour
     i.e. the result is a single colour
     """
-    return setcol(fillobj(g, 1), topcol(g))
+    return setcol(topcol(g), fillobj(1, g))
 
 
 def ic_interior(g: Grid) -> Grid:
@@ -190,7 +201,7 @@ def ic_interior(g: Grid) -> Grid:
     Returns the *interior* of fillobj - i.e. the filled in objects, but not the original border
     Any result is cast to the top colour.
     """
-    filled = fillobj(g, topcol(g))
+    filled = fillobj(topcol(g), g)
     filled.grid[g.grid != 0] = 0
     return filled
 
@@ -219,6 +230,15 @@ def topcol(g: Grid) -> Colour:
     majCol in icecuber.
     """
     return np.argmax(np.bincount(g.grid.ravel())[1:])+1
+
+def rarestcol(g: Grid) -> Colour:
+    """
+    Returns the least common colour, excluding black. 
+    Excludes any colours with zero count.
+    """
+    counts = np.bincount(g.grid.ravel())[1:]
+    counts[counts == 0] = 9999
+    return np.argmin(counts)+1
 
 ## Rigid transformations
 
@@ -272,10 +292,16 @@ def countToXY(c: Count, col: Colour) -> Grid:
     return Grid(np.zeros((c, c))+col)
 
 def countToX(c: Count, col: Colour) -> Grid:
-    return Grid(np.zeros((c, c))+col)
+    return Grid(np.zeros((c, 1))+col)
 
 def countToY(c: Count, col: Colour) -> Grid:
-    return Grid(np.zeros((c, c))+col)
+    return Grid(np.zeros((1, c))+col)
+
+def colourHull(c: Colour, g: Grid) -> Grid:
+    """
+    Returns a grid with the same size as the input, but of the specified colour
+    """
+    return Grid(np.zeros(g.size)+c)
 
 ####################################
 # Smearing
@@ -581,6 +607,20 @@ def ic_splitall(g: Grid) -> List[Grid]:
             ret += [g.newgrid(g.grid[obj], offset=(obj[0].start, obj[1].start)) for obj in objects]
     return ret
 
+struct8 = np.array([[1, 1, 1], [1, 1, 1], [1, 1, 1]], dtype=np.int)
+def split8(g: Grid) -> List[Grid]:
+    """
+    Find all objects using 8-structuring element
+    Each colour is separated
+    """
+    colours = np.unique(g.grid)
+    ret = []
+    for colour in colours:
+        if colour:
+            objects = ndimage.find_objects(ndimage.label(g.grid == colour, structure=struct8)[0])
+            ret += [g.newgrid(g.grid[obj], offset=(obj[0].start, obj[1].start)) for obj in objects]
+    return ret
+
 def ic_splitcolumns(g: Grid) -> List[Grid]:
     """
     Return all the columns 
@@ -683,6 +723,15 @@ pickmax_functions = {
     "y_pos": lambda l: max(l, key=lambda o: o.position[1]),
     "y_neg": lambda l: min(l, key=lambda o: o.position[1]),
 }
+
+from collections import Counter
+def pickcommon(l: List[Grid]) -> Grid:
+    """
+    Given a list of grids, return the grid which is most common (exactly)
+    """
+    primitive_assert(len(l) > 0)
+    hashes = [hash(g.grid.data.tobytes()) for g in l]
+    return l[hashes.index(Counter(hashes).most_common(1)[0][0])]
 
 def ic_pickunique(l: List[Grid]) -> Grid:
     """
@@ -809,6 +858,27 @@ def mirrorY(g: Grid) -> Grid:
     Append a reflection of the grid g vertically
     """
     return Grid(np.vstack((g.grid, np.flipud(g.grid))))
+
+def map(f: Callable[[Grid], Grid], l: List[Grid]) -> List[Grid]:
+    return [f(g) for g in l]
+
+def get_bg(c: Colour, g: Grid) -> Grid:
+    """
+    Return a grid of all the background pixels in g, coloured c
+    Essentially same as invert.
+    """ 
+    return Grid(np.where(g.grid == 0, c, 0))
+
+def logical_and(g: Grid, h: Grid) -> Grid:
+    """
+    Logical AND between two grids. Use the colour of the first argument
+    Logical OR is given by overlay.
+    """
+    primitive_assert(g.size == h.size, "logical_and: grids must be the same size")
+
+    mask = np.logical_and(g.grid != 0, h.grid != 0)
+    return  g.newgrid(np.where(mask, g.grid, 0))
+    # return Grid(np.logical_and(g.grid, h.grid))
 
 #############################
 # PRIMITIVE GENERATION
@@ -949,6 +1019,7 @@ p.registerMany([
     ic_filtercol,
     ic_erasecol,
     setcol,
+    set_bg,
 
     # ic_compress,
     getpos,
@@ -962,7 +1033,8 @@ p.registerMany([
     # ic_interior2,
     # ic_border,
     ic_center,
-    topcol
+    topcol,
+    rarestcol
 ])
 
 # rigid?
@@ -1005,8 +1077,10 @@ p.registerMany([
     # ic_cut,
     ic_splitcols,
     ic_splitall,
+    split8,
     ic_splitcolumns,
     ic_splitrows,
+    pickcommon,
     # ic_insidemarked,
     # gravity?
 ])
@@ -1018,7 +1092,10 @@ p.register(ic_pickunique)
 p.register(ic_composegrowing)
 # stackline, mystrack, pickmaxes, picknotmaxes?
 
-p.registerMany([mklist, lcons, overlay, colourPixel, repeatX, repeatY, mirrorX, mirrorY])
+p.registerMany([mklist, lcons, overlay, colourPixel, repeatX, repeatY, mirrorX, mirrorY, colourHull, get_bg, logical_and])
+
+# flying too close to the sun
+p.register(map, "map", [arrow(tgrid, tgrid), tlist(tgrid), tlist(tgrid)])
 
 # Add ground colours
 # Skip colour 0 because this doesnt make much sense as an input to colour functions
