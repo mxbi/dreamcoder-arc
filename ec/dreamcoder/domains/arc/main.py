@@ -181,7 +181,7 @@ class MikelArcNet(nn.Module):
         #         conv_1x1_filters=64,
         #         pooling='max')
 
-        self.model = nn.Sequential(
+        self.convblock0 = nn.Sequential(
             nn.Conv2d(10, 32, 3, padding=1),
             # nn.BatchNorm2d(32),
             nn.ReLU(),
@@ -190,20 +190,40 @@ class MikelArcNet(nn.Module):
             # nn.BatchNorm2d(32),
             nn.ReLU(),
 
-            nn.Conv2d(32, 64, 3, padding=1),
-            # nn.BatchNorm2d(64),
-            nn.ReLU(),
+            # nn.Conv2d(32, 64, 3, padding=1),
+            # # nn.BatchNorm2d(64),
+            # nn.ReLU(),
 
+            # nn.AdaptiveAvgPool2d((1, 1)),
+            # nn.Flatten(),
+        )
+
+        self.res1 = nn.Sequential(
+            nn.Conv2d(32, 32, 3, padding=2, dilation=2),
+            nn.ReLU(),
+        )
+
+        self.res2 = nn.Sequential(
+            nn.Conv2d(32, 32, 3, padding=3, dilation=3),
+            nn.ReLU(),
+        )
+
+        self.output = nn.Sequential(
+            nn.Conv2d(32, 64, 3, padding=1),
+            nn.ReLU(),
             nn.AdaptiveAvgPool2d((1, 1)),
             nn.Flatten(),
         )
-
 
     def forward(self, x):
         # (num_examples, num_colors, h, w) to (num_examples, intermediate_dim)
         x = x.to(torch.float32)
         try:
-            x = self.model(x)
+            # x = self.model(x)
+            x = self.convblock0(x)
+            x = self.res1(x) + x
+            x = self.res2(x) + x
+            x = self.output(x)
         except:
             print(x)
             raise

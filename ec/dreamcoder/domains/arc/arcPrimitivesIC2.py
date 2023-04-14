@@ -155,11 +155,38 @@ def ic_toorigin(g: Grid) -> Grid:
     "Reset a grid's position to zero"
     return Grid(g.grid)
 
+struct4 = np.array([[0,1,0],[1,1,1],[0,1,0]])
+def fillobj(g: Grid, c: Colour) -> Grid:
+    """
+    Fill in any closed objects in the grid with a specified colour.
+    The 4-connectedness is used to determine what is a closed object.
+    """
+    primitive_assert(c != 0, "fill with 0 has no effect")
+
+    binhole = ndimage.binary_fill_holes(g.grid != 0, structure=struct4)
+    newgrid = np.copy(g.grid)
+    newgrid[binhole & (g.grid == 0)] = c
+
+    return g.newgrid(newgrid)
+
+
 def ic_fill(g: Grid) -> Grid:
-    raise NotImplementedError
+    """
+    Returns a grid with all closed objects filled in with the most common colour
+    Note that like Icecuber, this also colours everything not connected to the border with the most common colour
+    i.e. the result is a single colour
+    """
+    return setcol(fillobj(g, 1), topcol(g))
+
 
 def ic_interior(g: Grid) -> Grid:
-    raise NotImplementedError
+    """
+    Returns the *interior* of fillobj - i.e. the filled in objects, but not the original border
+    Any result is cast to the top colour.
+    """
+    filled = fillobj(g, topcol(g))
+    filled.grid[g.grid != 0] = 0
+    return filled
 
 def ic_interior2(g: Grid) -> Grid:
     raise NotImplementedError
@@ -242,7 +269,7 @@ def countToX(c: Count, col: Colour) -> Grid:
     return Grid(np.zeros((c, c))+col)
 
 def countToY(c: Count, col: Colour) -> Grid:
-    return Grid(np.zeros((c, c)+col))
+    return Grid(np.zeros((c, c))+col)
 
 ####################################
 # Smearing
@@ -715,6 +742,37 @@ def mklist(g: Grid, h: Grid) -> List[Grid]:
 def lcons(g: Grid, h: List[Grid]) -> List[Grid]:
     return [g] + h
 
+def overlay(g: Grid, h: Grid) -> Grid:
+    """
+    If two grids have the same size, overlay them without taking into account position. This returns a new grid at position (0, 0)
+    If they have different sizes, we compose them using positions (and provide minimum bounding box), similar to composeGrowing
+    Grid h goes on top of grid g.
+    """
+    if g.size == h.size:
+        # New grid, replace any non-zero values with the other grid
+        newgrid = Grid(g.grid.copy())
+        newgrid.grid[h.grid != 0] = h.grid[h.grid != 0]
+        return newgrid
+    else:
+        xpos = min(g.position[0], h.position[0])
+        ypos = min(g.position[1], h.position[1])
+        xsize = max(g.position[0]+g.size[0], h.position[0]+h.size[0]) - xpos
+        ysize = max(g.position[1]+g.size[1], h.position[1]+h.size[1]) - ypos
+
+        newgrid = Grid(np.zeros((xsize, ysize)), position=(xpos, ypos))
+
+        # First assignment doesnt need any masking
+        newgrid.grid[g.position[0]-xpos:g.position[0]-xpos+g.size[0], 
+                     g.position[1]-ypos:g.position[1]-ypos+g.size[1]] = g.grid
+
+        # Second assignment does
+        mask = np.nonzero(h.grid)
+        slice = newgrid.grid[h.position[0]-xpos:h.position[0]-xpos+h.size[0],
+                                h.position[1]-ypos:h.position[1]-ypos+h.size[1]]
+        slice[mask] = h.grid[mask]
+
+        return newgrid
+
 #############################
 # PRIMITIVE GENERATION
 #############################
@@ -830,6 +888,8 @@ class PrimitiveBank:
 
 p = PrimitiveBank(typemap, verbose=True)
 
+p.registerMany([rot90, rot180, rot270, flipx, flipy, swapxy])
+
 # Redo the above
 p.registerMany([
     ic_filtercol,
@@ -842,8 +902,9 @@ p.registerMany([
 
     #hull?
     ic_toorigin,
-    # ic_fill,
-    # ic_interior,
+    fillobj,
+    ic_fill,
+    ic_interior,
     # ic_interior2,
     # ic_border,
     ic_center,
@@ -903,7 +964,7 @@ p.register(ic_pickunique)
 p.register(ic_composegrowing)
 # stackline, mystrack, pickmaxes, picknotmaxes?
 
-p.registerMany([mklist, lcons])
+p.registerMany([mklist, lcons, overlay])
 
 # Add ground colours
 # Skip colour 0 because this doesnt make much sense as an input to colour functions
