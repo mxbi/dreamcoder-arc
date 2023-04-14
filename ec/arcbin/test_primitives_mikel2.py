@@ -35,5 +35,20 @@ def test_primitive_inputs(p):
         print(func, test_map[input_type])
         func = func(test_map[input_type]) # uncurry
 
+    # Now we check the output type
+    # Because we're mapping between type-systems, this is a bit hacky
+    # But mainly just a heuristic
+
+    output_type = type(func)
     # out = func(*inputs)
-    print(func)
+    if typesig[-1] in [arcPrimitivesIC2.tpos, arcPrimitivesIC2.tsize]:
+        assert isinstance(func, tuple), f"Output type {output_type} does not match expected type {typesig[-1]}"
+    elif typesig[-1] in [arcPrimitivesIC2.tcount, arcPrimitivesIC2.tcolour]:
+        assert isinstance(func, (int, np.int64)), f"Output type {output_type} does not match expected type {typesig[-1]}"
+    elif typesig[-1].name == 'list':
+        assert isinstance(func, list), f"Output type {output_type} does not match expected type {typesig[-1]}"
+        for item in func:
+            assert isinstance(item, arcPrimitivesIC2.Grid), f"Output type {output_type} does not match expected type {typesig[-1]}"
+    else:
+        print(typesig[-1], type(typesig[-1]))
+        assert arcPrimitivesIC2.typemap[output_type] == typesig[-1], f"Output type {output_type} does not match expected type {typesig[-1]}"

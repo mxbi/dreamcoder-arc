@@ -186,7 +186,7 @@ class Frontier(object):
                 f.bestPosterior.logPrior for f in frontiers if not f.empty) / numberOfHits
         else:
             averageLikelihood = 0
-        return "\n".join([f.summarize() for f in frontiers] +
+        return "\n".join([f.summarize() for f in frontiers if not f.empty] +
                          ["Hits %d/%d tasks" % (numberOfHits, len(frontiers))] +
                          ["Average description length of a program solving a task: %f nats" % (-averageLikelihood)])
 

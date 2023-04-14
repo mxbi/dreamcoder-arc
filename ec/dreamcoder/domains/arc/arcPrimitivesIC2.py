@@ -39,6 +39,9 @@ class Grid():
     def __init__(self, grid: np.ndarray, position: Tuple[int, int]=(0, 0), cutout=False):
         self.position = position
 
+        if grid.shape[0] > 30 or grid.shape[1] > 30:
+            raise PrimitiveException(f"Grid size {grid.shape} too large")
+
         self.cutout = cutout
         if cutout:
             self.grid, (xpos, ypos) = Grid.cutout(grid)
@@ -64,6 +67,9 @@ class Grid():
         position = self.position
         if offset:
             position = (position[0] + offset[0], position[1] + offset[1])
+
+        if grid.shape[0] > 30 or grid.shape[1] > 30:
+            raise PrimitiveException(f"Grid size {grid.shape} too large")
 
         return Grid(grid, position, cutout)
     
@@ -532,6 +538,7 @@ def ic_wrap(line: Grid, area: Grid) -> Grid:
     primitive_assert(area.size > (0, 0))
 
     zeros_like = np.zeros_like(area.grid)
+    raise NotImplementedError
 
 ####################################
 # Split operations
@@ -772,6 +779,36 @@ def overlay(g: Grid, h: Grid) -> Grid:
         slice[mask] = h.grid[mask]
 
         return newgrid
+    
+def colourPixel(c: Colour) -> Grid:
+    """
+    Create a 1x1 grid with a single pixel of colour c
+    """
+    return Grid(np.array([[c]]))
+
+def repeatX(g: Grid) -> Grid:
+    """
+    Repeat the grid g horizontally, with no gaps
+    """
+    return Grid(np.tile(g.grid, (1, 2)))
+
+def repeatY(g: Grid) -> Grid:
+    """
+    Repeat the grid g vertically, with no gaps
+    """
+    return Grid(np.tile(g.grid, (2, 1)))
+
+def mirrorX(g: Grid) -> Grid:
+    """
+    Append a reflection of the grid g horizontally
+    """
+    return Grid(np.hstack((g.grid, np.fliplr(g.grid))))
+
+def mirrorY(g: Grid) -> Grid:
+    """
+    Append a reflection of the grid g vertically
+    """
+    return Grid(np.vstack((g.grid, np.flipud(g.grid))))
 
 #############################
 # PRIMITIVE GENERATION
@@ -800,6 +837,23 @@ class PrimitiveBank:
         raise TypeError(f"Annotation {anno} has no corresponding DreamCoder type")
 
     def register(self, f: Callable, name: str=None, typesig: List[TypeConstructor]=None, autocurry: bool=True):
+        if not isinstance(f, typing.Callable):
+            # This is a value, not a function
+            if len(typesig) != 1:
+                raise TypeError('Value passed to Primitive constructor, typesig must be of length 1')
+            if name is None:
+                raise ValueError('Value passed to Primitive constructor, name must be specified')
+            dc_type = typesig[-1]
+
+            primitive = Primitive(name, dc_type, f)
+            primitive.typesig = typesig # Allow later reflection
+            self.primitives[name] = primitive
+
+            if self.verbose:
+                print(f"Registered value {name} of type {dc_type}.")
+
+            return
+
         if name is None:
             name = f.__name__
             if name == '<lambda>':
@@ -927,8 +981,8 @@ p.registerMany([
 ])
 
 p.register(ic_makeborder)
-p.register(ic_makeborder2)
-p.register(ic_makeborder2_maj)
+# p.register(ic_makeborder2)
+# p.register(ic_makeborder2_maj)
 
 p.register(ic_compress2)
 p.register(ic_compress3)
@@ -943,12 +997,12 @@ p.registerMany([left_half, right_half, top_half, bottom_half])
 # move?
 p.registerMany([
     ic_embed, 
-    ic_wrap
+    # ic_wrap
     # broadcast, repeat, mirror?
     ])
 
 p.registerMany([
-    ic_cut,
+    # ic_cut,
     ic_splitcols,
     ic_splitall,
     ic_splitcolumns,
@@ -964,11 +1018,11 @@ p.register(ic_pickunique)
 p.register(ic_composegrowing)
 # stackline, mystrack, pickmaxes, picknotmaxes?
 
-p.registerMany([mklist, lcons, overlay])
+p.registerMany([mklist, lcons, overlay, colourPixel, repeatX, repeatY, mirrorX, mirrorY])
 
 # Add ground colours
 # Skip colour 0 because this doesnt make much sense as an input to colour functions
 for i in range(1, 10):
-    p.register(lambda: i, f"c{i}", [tcolour])
+    p.register(i, f"c{i}", [tcolour])
 
 print(f"Registered {len(p.primitives)} total primitives.")

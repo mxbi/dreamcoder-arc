@@ -805,7 +805,9 @@ class RecognitionModel(nn.Module):
                 for task in tasks}
 
     def frontierKL(self, frontier, auxiliary=False, vectorized=True):
+        # t0 = time.time()
         features = self.featureExtractor.featuresOfTask(frontier.task)
+        # print("features", time.time() - t0)
         if features is None:
             return None, None
         # Monte Carlo estimate: draw a sample from the frontier
@@ -819,7 +821,9 @@ class RecognitionModel(nn.Module):
         else:
             features = self._MLP(features).unsqueeze(0)
             
+            # print("batchedloglikelihoods")
             ll = self.grammarBuilder.batchedLogLikelihoods(features, [entry.program]).view(-1)
+            # print("bll done")
             return -ll, al
             
 
@@ -857,7 +861,7 @@ class RecognitionModel(nn.Module):
 
     def train(self, frontiers, _=None, steps=None, lr=0.001, topK=5, CPUs=1,
               timeout=None, evaluationTimeout=0.001,
-              helmholtzFrontiers=[], helmholtzRatio=0., helmholtzBatch=500,
+              helmholtzFrontiers=[], helmholtzRatio=0., helmholtzBatch=1000,
               biasOptimal=None, defaultRequest=None, auxLoss=False, vectorized=True):
         """
         helmholtzRatio: What fraction of the training data should be forward samples from the generative model?
@@ -1040,9 +1044,11 @@ class RecognitionModel(nn.Module):
                 dreaming = random.random() < helmholtzRatio
                 if dreaming: frontier = getHelmholtz()
                 self.zero_grad()
+                # print("doing frontierKL")
                 loss, classificationLoss = \
                         self.frontierBiasOptimal(frontier, auxiliary=auxLoss, vectorized=vectorized) if biasOptimal \
                         else self.frontierKL(frontier, auxiliary=auxLoss, vectorized=vectorized)
+                # print("done.")
                 if loss is None:
                     if not dreaming:
                         eprint("ERROR: Could not extract features during experience replay.")
@@ -1069,16 +1075,23 @@ class RecognitionModel(nn.Module):
                     if totalGradientSteps > steps:
                         break # Stop iterating, then print epoch and loss, then break to finish.
                         
-            if (i == 1 or i % 10 == 0) and losses:
-                eprint("(ID=%d): " % self.id, "Epoch", i, "Loss", mean(losses))
+            if (i == 1 or i % 50 == 0) and losses:
+                # eprint("(ID=%d): " % self.id, "Epoch", i, "Loss", mean(losses))
+                eprint(f"(ID={self.id}): Epoch {i} Loss {mean(losses):.2f}")
                 if realLosses and dreamLosses:
-                    eprint("(ID=%d): " % self.id, "\t\t(real loss): ", mean(realLosses), "\t(dream loss):", mean(dreamLosses))
-                eprint("(ID=%d): " % self.id, "\tvs MDL (w/o neural net)", mean(descriptionLengths))
+                    # eprint("(ID=%d): " % self.id, "\t\t(real loss): ", mean(realLosses), "\t(dream loss):", mean(dreamLosses))
+                    eprint(f"(ID={self.id}): \t\t(real loss): {mean(realLosses):.1f} \t(dream loss): {mean(dreamLosses):.1f}")
+                # eprint("(ID=%d): " % self.id, "\tvs MDL (w/o neural net)", mean(descriptionLengths))
+                eprint(f"(ID={self.id}): \tvs MDL (w/o neural net) {mean(descriptionLengths):.2f}")
                 if realMDL and dreamMDL:
-                    eprint("\t\t(real MDL): ", mean(realMDL), "\t(dream MDL):", mean(dreamMDL))
-                eprint("(ID=%d): " % self.id, "\t%d cumulative gradient steps. %f steps/sec"%(totalGradientSteps,
-                                                                       totalGradientSteps/(time.time() - start)))
-                eprint("(ID=%d): " % self.id, "\t%d-way auxiliary classification loss"%len(self.grammar.primitives),sum(classificationLosses)/len(classificationLosses))
+                    # eprint("\t\t(real MDL): ", mean(realMDL), "\t(dream MDL):", mean(dreamMDL))
+                    eprint(f"\t\t(real MDL): {mean(realMDL):.1f} \t(dream MDL): {mean(dreamMDL):.1f}")
+                # eprint("(ID=%d): " % self.id, "\t%d cumulative gradient steps. %f steps/sec"%(totalGradientSteps,
+                                                                    #    totalGradientSteps/(time.time() - start)))
+                eprint(f"(ID={self.id}): \t{totalGradientSteps} cum grad steps. {totalGradientSteps/(time.time() - start):.1f} steps/sec | {len(self.grammar.primitives)}-way aux classif loss {sum(classificationLosses)/len(classificationLosses):.4f}")
+                # eprint("(ID=%d): " % self.id, "\t%d-way auxiliary classification loss"%len(self.grammar.primitives),sum(classificationLosses)/len(classificationLosses))
+                # eprint(f"(ID={self.id}): \t{len(self.grammar.primitives)}-way auxiliary classification loss {sum(classificationLosses)/len(classificationLosses):.1f}")
+
                 losses, descriptionLengths, realLosses, dreamLosses, realMDL, dreamMDL = [], [], [], [], [], []
                 classificationLosses = []
                 gc.collect()
@@ -1130,10 +1143,10 @@ class RecognitionModel(nn.Module):
         #                                    statusUpdate='.' if n % frequency == 0 else None,
         #                                    seed=startingSeed + n),
         #     range(N))
-        eprint()
-        flushEverything()
+        # eprint()
+        # flushEverything()
         samples = [z for z in samples if z is not None]
-        eprint()
+        # eprint()
         eprint("Got %d/%d valid samples." % (len(samples), N))
         flushEverything()
 

@@ -144,6 +144,8 @@ class ArcNet(nn.Module):
                 #print('p: {}'.format(p))
                 out = p.evaluate([])(grid)
                 example = (grid,), out
+                if out.shape[0] > 30 or out.shape[1] > 30:
+                    return None
                 return example
             except ValueError:
             # except:
@@ -211,31 +213,44 @@ class MikelArcNet(nn.Module):
         self.output = nn.Sequential(
             nn.Conv2d(32, 64, 3, padding=1),
             nn.ReLU(),
-            nn.AdaptiveAvgPool2d((1, 1)),
+            nn.AdaptiveAvgPool2d((3, 3)),
             nn.Flatten(),
+            # nn.Linear(2*2*64, 64),
         )
 
-    def forward(self, x):
+        self.linear = nn.Linear(3*3*64, 64)
+
+    def forward(self, x, y):
         # (num_examples, num_colors, h, w) to (num_examples, intermediate_dim)
         x = x.to(torch.float32)
+        y = y.to(torch.float32)
+        # print(x.shape, y.shape)
         try:
             # x = self.model(x)
             x = self.convblock0(x)
             x = self.res1(x) + x
             x = self.res2(x) + x
             x = self.output(x)
+
+            y = self.convblock0(y)
+            y = self.res1(y) + y
+            y = self.res2(y) + y
+            y = self.output(y)
         except:
-            print(x)
+            # print(x, y)
             raise
+
+        diff = y - x
+        diff = self.linear(diff)
 
         # sum features over examples
         # (num_examples, intermediate_dim) to (intermediate_dim)
-        x = torch.sum(x, 0)
+        # d = torch.sum(x, 0)
 
         # test if this is actually helping.
         # return torch.rand(x.shape)
 
-        return x
+        return diff
 
     def make_features(self, examples):
         """
@@ -311,13 +326,19 @@ class MikelArcNet(nn.Module):
             raise
         if single_batch:
             # print(x1.shape, x2.shape)
-            ret = self(x2)-self(x1) # difference between output and input
+            # ret = self(x2)-self(x1) # difference between output and input
+            ret = torch.sum(self(x1, x2), axis=0)
         else:
-            x1 = [self(x) for x in x1]
-            x2 = [self(x) for x in x2]
+            ret = []
+            for x, y in zip(x1, x2):
+                ret.append(self(x, y)[0])
+
+            ret = torch.mean(torch.stack(ret), axis=0)
+            # x1 = [self(x) for x in x1]
+            # x2 = [self(x) for x in x2]
             # print(len(x1), x1[0].shape, x1[1].shape)
             # print(len(x2), x2[0].shape, x2[2].shape)
-            ret = torch.sum(torch.stack(x1), axis=0) - torch.sum(torch.stack(x2), axis=0)
+            # ret = torch.sum(torch.stack(x1), axis=0) - torch.sum(torch.stack(x2), axis=0)
             # return torch.mean(torch.stack([self(x2[i])-self(x1[i]) for i in range(len(x1))]), axis=0)
 
         # print(ret.shape)

@@ -5,6 +5,7 @@ from dreamcoder.utilities import get_root_dir
 import os
 import traceback
 import subprocess
+import numpy as np
 
 
 def multicoreEnumeration(g, tasks, _=None,
@@ -142,11 +143,20 @@ def multicoreEnumeration(g, tasks, _=None,
     id2job = {}
     nextID = 0
 
+    last_update_time = 0
+
     while True:
         refreshJobs()
         # Don't launch a job that we are already working on
         # We run the stopwatch whenever the job is being worked on
         # freeJobs are things that we are not working on but could be
+
+        if time.time() - last_update_time > 5:
+            minrem = sum(enumerationTimeout - stopwatches[j].elapsed for j in jobs)/60
+            print(f"Enumerated {sum(taskToNumberOfPrograms.values()):>9,} programs | {len(jobs)} jobs | {activeCPUs} CPUs | {sum(len(jobs[j]) for j in jobs)} tasks | {minrem:.1f}m CPU rem | {minrem/min(CPUs, len(jobs)):.1f}m rem | {np.mean([lowerBounds[j] for j in jobs]):.1f} avg lb")
+            last_update_time = time.time()
+
+        
         freeJobs = [j for j in jobs if not stopwatches[j].running
                     and stopwatches[j].elapsed < enumerationTimeout - 0.5]
         if freeJobs and activeCPUs < CPUs:
@@ -162,8 +172,8 @@ def multicoreEnumeration(g, tasks, _=None,
                 g, request = j[:2]
                 bi = budgetIncrement(lowerBounds[j])
                 thisTimeout = enumerationTimeout - stopwatches[j].elapsed
-                eprint("(frontend%s) Launching %s (%d tasks) w/ %d CPUs. %f <= MDL < %f. Timeout %f." %
-                       (os.getpid(), request, len(jobs[j]), allocation[j], lowerBounds[j], lowerBounds[j] + bi, thisTimeout))
+                # eprint("(frontend%s) Launching %s (%d tasks) w/ %d CPUs. %f <= MDL < %f. Timeout %f." %
+                    #    (os.getpid(), request, len(jobs[j]), allocation[j], lowerBounds[j], lowerBounds[j] + bi, thisTimeout))
                 stopwatches[j].start()
                 parallelCallback(wrapInThread(solver),
                                  q=q, g=g, ID=nextID,
