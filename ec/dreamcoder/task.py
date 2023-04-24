@@ -79,6 +79,7 @@ class Task(object):
             signal.signal(signal.SIGVTALRM, timeoutCallBack)
             signal.setitimer(signal.ITIMER_VIRTUAL, timeout)
 
+            # print(e.body)
             try:
                 f = e.evaluate([])
             except IndexError:

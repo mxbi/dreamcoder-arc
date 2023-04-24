@@ -72,7 +72,7 @@ def multicoreEnumeration(g, tasks, _=None,
                 k = (task2grammar[t], t.request)
             jobs[k] = jobs.get(k, []) + [t]
 
-    disableParallelism = len(jobs) == 1
+    disableParallelism = 1#len(jobs) == 1
     parallelCallback = launchParallelProcess if not disableParallelism else lambda f, * \
         a, **k: f(*a, **k)
     if disableParallelism:
@@ -153,7 +153,7 @@ def multicoreEnumeration(g, tasks, _=None,
 
         if time.time() - last_update_time > 5:
             minrem = sum(enumerationTimeout - stopwatches[j].elapsed for j in jobs)/60
-            print(f"Enumerated {sum(taskToNumberOfPrograms.values()):>9,} programs | {len(jobs)} jobs | {activeCPUs} CPUs | {sum(len(jobs[j]) for j in jobs)} tasks | {minrem:.1f}m CPU rem | {minrem/min(CPUs, len(jobs)):.1f}m rem | {np.mean([lowerBounds[j] for j in jobs]):.1f} avg lb")
+            print(f"Enumerated {sum(taskToNumberOfPrograms.values()):>9,} programs | {len(jobs)} jobs | {activeCPUs} CPUs | {sum(len(jobs[j]) for j in jobs)} tasks | {minrem:.1f}m CPU rem | {minrem/min(CPUs, len(jobs)+1):.1f}m rem | {np.mean([lowerBounds[j] for j in jobs]):.1f} avg lb")
             last_update_time = time.time()
 
         

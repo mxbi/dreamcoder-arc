@@ -453,7 +453,7 @@ def ic_spread(g: Grid) -> Grid:
 
     Later, take indices out of the queue, and for each one:
     - Take the 4 structuring element, if any of the neighbours are not yet coloured, colour them with this colour.
-   
+
     SLOW
     """
 
@@ -522,7 +522,7 @@ def right_half(g: Grid) -> Grid:
     """Note that left_half + right_half != identity, middle column may be lost"""
     primitive_assert(g.size[1] > 1, "Grid is too small to crop")
     return g.newgrid(g.grid[:, -g.grid.shape[1]//2:], 
-                     offset=(0, g.grid.shape[1]//2 + g.grid.shape[1]%2))
+                    offset=(0, g.grid.shape[1]//2 + g.grid.shape[1]%2))
 
 def top_half(g: Grid) -> Grid:
     primitive_assert(g.size[0] > 1, "Grid is too small to crop")
@@ -532,7 +532,7 @@ def bottom_half(g: Grid) -> Grid:
     """Note that top_half + bottom_half != identity, middle row may be lost"""
     primitive_assert(g.size[0] > 1, "Grid is too small to crop")
     return g.newgrid(g.grid[-g.grid.shape[0]//2:], 
-                     offset=(g.grid.shape[0]//2 + g.grid.shape[0]%2, 0))
+                    offset=(g.grid.shape[0]//2 + g.grid.shape[0]%2, 0))
 
 # TODO: 25 move primitives, seems kind of excessive...
 
@@ -819,7 +819,7 @@ def overlay(g: Grid, h: Grid) -> Grid:
 
         # First assignment doesnt need any masking
         newgrid.grid[g.position[0]-xpos:g.position[0]-xpos+g.size[0], 
-                     g.position[1]-ypos:g.position[1]-ypos+g.size[1]] = g.grid
+                    g.position[1]-ypos:g.position[1]-ypos+g.size[1]] = g.grid
 
         # Second assignment does
         mask = np.nonzero(h.grid)
@@ -829,11 +829,11 @@ def overlay(g: Grid, h: Grid) -> Grid:
 
         return newgrid
     
-def colourPixel(c: Colour) -> Grid:
-    """
-    Create a 1x1 grid with a single pixel of colour c
-    """
-    return Grid(np.array([[c]]))
+# def colourPixel(c: Colour) -> Grid:
+#     """
+#     Create a 1x1 grid with a single pixel of colour c
+#     """
+#     return Grid(np.array([[c]]))
 
 def repeatX(g: Grid) -> Grid:
     """
@@ -859,8 +859,21 @@ def mirrorY(g: Grid) -> Grid:
     """
     return Grid(np.vstack((g.grid, np.flipud(g.grid))))
 
-def map(f: Callable[[Grid], Grid], l: List[Grid]) -> List[Grid]:
-    return [f(g) for g in l]
+# def map(f: Callable[[Grid], Grid], l: List[Grid]) -> List[Grid]:
+    # print('map', f, len(l), len([f(g) for g in l]))
+    # return [f(g) for g in l]
+
+def mapSplit8(f: Callable[[Grid], Grid], g: Grid) -> Grid:
+    """
+    Split the grid g into objects, apply f to each, and then reassemble
+    """
+    print(f, g)
+    l = split8(g)
+    l = [f(g) for g in l]
+    return ic_composegrowing(l)
+
+
+# def map
 
 def get_bg(c: Colour, g: Grid) -> Grid:
     """
@@ -1092,14 +1105,19 @@ p.register(ic_pickunique)
 p.register(ic_composegrowing)
 # stackline, mystrack, pickmaxes, picknotmaxes?
 
-p.registerMany([mklist, lcons, overlay, colourPixel, repeatX, repeatY, mirrorX, mirrorY, colourHull, get_bg, logical_and])
+p.registerMany([mklist, lcons, overlay, 
+                # colourPixel, # need to figure out how to do this well: want it for output, but not for input
+                repeatX, repeatY, mirrorX, mirrorY, colourHull, get_bg, logical_and])
 
 # flying too close to the sun
-p.register(map, "map", [arrow(tgrid, tgrid), tlist(tgrid), tlist(tgrid)])
+p.register(mapSplit8, "mapSplit8", [arrow(tgrid, tgrid), tgrid, tgrid])
 
 # Add ground colours
 # Skip colour 0 because this doesnt make much sense as an input to colour functions
 for i in range(1, 10):
     p.register(i, f"c{i}", [tcolour])
+
+# for i in range(1, 2):
+#     p.register(i, f"i{i}", [tcount])
 
 print(f"Registered {len(p.primitives)} total primitives.")

@@ -84,11 +84,15 @@ def convert_arc_task(task, use_toutput=False):
 
     return task
 
-def get_arc_train_tasks(n=None):
-    trainset = get_all_tasks()
+import arctools
+
+
+def get_arc_tasks(n=None, eval=False):
+    trainset, evalset = arctools.load_data()
+    dataset = evalset if eval else trainset
     if n:
-        trainset = trainset[:n]
-    return [convert_arc_task(task) for task in trainset]
+        dataset = dataset[:n]
+    return [convert_arc_task(task) for task in dataset]
 
 def get_arc_task(task_num, use_toutput=False):
     task_id = num_to_id(task_num)
