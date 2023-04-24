@@ -2,12 +2,16 @@ import binutil
 import dill
 import numpy as np
 import os
+import time
 
 from dreamcoder.dreamcoder import commandlineArguments, ecIterator
 from dreamcoder.grammar import Grammar
 from dreamcoder.domains.arc.makeTasks import get_arc_task, get_arc_tasks
 from dreamcoder.domains.arc.main import ArcNet, MikelArcNet
 from dreamcoder.domains.arc import arcPrimitivesIC2
+
+run_id = int(time.time())
+print(f'Run ID: {run_id}')
 
 primitives = arcPrimitivesIC2.p.primitives.values()
 arcPrimitivesIC2.p.generate_ocaml_primitives()
@@ -54,7 +58,10 @@ def test_evaluate(task, soln):
         
         corrects = 0
         for (input_grid, ), output_grid in task.test_examples:
-            corrects += np.array_equal(output_grid.grid, f(input_grid).grid)
+            try:
+                corrects += np.array_equal(output_grid.grid, f(input_grid).grid)
+            except Exception as e:
+                print(f'Exception {e} for {task.name} with {soln.entries[i].program.body}')
             
         corrects_list.append(corrects)
         
@@ -76,11 +83,15 @@ for i, result in enumerate(generator):
     for task, soln in result.taskSolutions.items():
         if len(soln.entries) == 0:
             continue
-        h1, h3 = test_evaluate(task, soln)
+        try:
+            h1, h3 = test_evaluate(task, soln)
+        except Exception as e:
+            print(f'Exception {e} while evaluating {task.name}')
+            h1, h3 = False, False
         hit1 += h1
         hit3 += h3
 
     print(f'Test summary: {hit1} ({hit1/len(result.taskSolutions):.1%}) acc@1, {hit3} ({hit3/len(result.taskSolutions):.1%}) acc@3')
 
-    dill.dump(result, open('result.pkl', 'wb'))
+    dill.dump(result, open(f'{run_id}_{i}_result.pkl', 'wb'))
     print('ecIterator count {}'.format(i))
