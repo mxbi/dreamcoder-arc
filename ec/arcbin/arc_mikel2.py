@@ -1,6 +1,7 @@
 import binutil
 import dill
 import numpy as np
+import os
 
 from dreamcoder.dreamcoder import commandlineArguments, ecIterator
 from dreamcoder.grammar import Grammar
@@ -21,7 +22,7 @@ args = commandlineArguments(
     iterations=1, 
     recognitionTimeout=360, 
     featureExtractor=MikelArcNet,
-    useRecognitionModel=False,#True,
+    useRecognitionModel=True,
     a=3, 
     maximumFrontier=10, 
     topK=5, 
@@ -38,6 +39,7 @@ training = get_arc_tasks(n=400, eval=False)
 training
 
 # iterate over wake and sleep cycles for our task
+os.makedirs('./experimentOutputs/arc/', exist_ok=True)
 generator = ecIterator(grammar,
                        training,
                        testingTasks=[],
