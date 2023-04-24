@@ -1,3 +1,7 @@
+build/
+images/
+.ipynb_checkpoints
+
 .merlin
 .idea/
 __pycache__
