@@ -57,12 +57,12 @@ def find_example(grid, tasks):
     return None
 
 
-def get_all_tasks():
-    "Gets all the training tasks"
-    trainset, testset = arctools.load_data()
+# def get_all_tasks():
+#     "Gets all the training tasks"
+#     trainset, testset = arctools.load_data()
 
-    # return [task.dreamcoder_format() for task in trainset]
-    return trainset
+#     # return [task.dreamcoder_format() for task in trainset]
+#     return trainset
 
 # def get_all_tasks():
 #     training_dir = 'data/ARC/data/training/'

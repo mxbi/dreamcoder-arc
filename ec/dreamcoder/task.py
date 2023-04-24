@@ -12,7 +12,7 @@ EVALUATIONTABLE = {}
 
 
 class Task(object):
-    def __init__(self, name, request, examples, features=None, cache=False):
+    def __init__(self, name, request, examples, features=None, cache=False, test_examples=None):
         '''request: the type of this task
         examples: list of tuples of (input, output). input should be a tuple, with one entry for each argument
         cache: should program evaluations be cached?
@@ -22,6 +22,7 @@ class Task(object):
         self.request = request
         self.name = name
         self.examples = examples
+        self.test_examples = test_examples
         if len(self.examples) > 0:
             assert all(len(xs) == len(examples[0][0])
                        for xs, _ in examples), \
