@@ -867,7 +867,6 @@ def mapSplit8(f: Callable[[Grid], Grid], g: Grid) -> Grid:
     """
     Split the grid g into objects, apply f to each, and then reassemble
     """
-    print(f, g)
     l = split8(g)
     l = [f(g) for g in l]
     return ic_composegrowing(l)
