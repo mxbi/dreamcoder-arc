@@ -1,5 +1,7 @@
 build/
 images/
+ec/wandb/
+icecuber/
 .ipynb_checkpoints
 
 .merlin
