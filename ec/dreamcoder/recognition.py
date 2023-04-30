@@ -865,7 +865,7 @@ class RecognitionModel(nn.Module):
                 logPrior=e.logPrior) for e in frontier],
             task=frontier.task)
 
-    def train(self, frontiers, _=None, steps=None, lr=0.0001, topK=5, CPUs=1,
+    def train(self, frontiers, _=None, steps=None, lr=0.001, topK=5, CPUs=1,
               timeout=None, evaluationTimeout=0.001,
               helmholtzFrontiers=[], helmholtzRatio=0., helmholtzBatch=1000,
               biasOptimal=None, defaultRequest=None, auxLoss=False, vectorized=True):
@@ -1033,9 +1033,17 @@ class RecognitionModel(nn.Module):
         epochs = 9999999
 
         all_losses = [] # For returning to result
+        reduced_lr = False
         for i in range(1, epochs + 1):
             if timeout and time.time() - start > timeout:
                 break
+
+            if not reduced_lr and timeout and (time.time() - start) > (timeout / 2):
+                eprint("Reducing learning rate to", lr / 10)
+                reduced_lr = True
+                for g in optimizer.param_groups:
+                    g['lr'] = lr / 10
+
 
             if totalGradientSteps > steps:
                 break
