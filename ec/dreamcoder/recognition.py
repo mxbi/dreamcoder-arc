@@ -1170,7 +1170,8 @@ class RecognitionModel(nn.Module):
         eprint("Got %d/%d valid samples." % (len(samples), N))
         flushEverything()
 
-        dill.dump(samples, open(f"output/helmholtz_{time.time()}.pkl", "wb"))
+        # for saving helmholtz samples
+        # dill.dump(samples, open(f"output/helmholtz_{time.time()}.pkl", "wb"))
 
         return samples
 

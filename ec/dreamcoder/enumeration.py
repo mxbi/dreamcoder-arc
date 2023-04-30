@@ -162,6 +162,16 @@ def multicoreEnumeration(g, tasks, _=None,
             print(f"Enumerated {sum(taskToNumberOfPrograms.values()):>9,} programs | {len(jobs)} jobs | {activeCPUs} CPUs | {sum(len(jobs[j]) for j in jobs)} tasks | {minrem:.1f}m CPU rem | {minrem/min(CPUs, len(jobs)+1):.1f}m rem | {np.mean([lowerBounds[j] for j in jobs]):.1f} avg lb")
             last_update_time = time.time()
 
+            wandb.log({"programs": sum(taskToNumberOfPrograms.values()),
+                        # "active_jobs": len(jobs),
+                        # "active_cpus": activeCPUs,
+                        "nFrontiers": sum(len(frontiers[t]) for t in tasks),
+                        # "nTasks": sum(len(jobs[j]) for j in jobs),
+                        "nTasksWithFrontiers": sum(len(frontiers[t])>0 for t in tasks),
+                        "avgLb": np.mean([lowerBounds[j] for j in jobs]),
+            })
+
+
         
         freeJobs = [j for j in jobs if not stopwatches[j].running
                     and stopwatches[j].elapsed < enumerationTimeout - 0.5]
