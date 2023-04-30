@@ -23,10 +23,10 @@ grammar = Grammar.uniform(primitives)
 
 # generic command line options
 args = commandlineArguments(
-    enumerationTimeout=10, 
+    enumerationTimeout=120, 
     aic=0.1,
     iterations=1, 
-    recognitionTimeout=1800, 
+    recognitionTimeout=360, 
     featureExtractor=MikelArcNet,
     useRecognitionModel=False,#True,
     # contextual=True,

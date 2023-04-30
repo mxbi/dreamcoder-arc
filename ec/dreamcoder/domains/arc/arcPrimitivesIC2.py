@@ -143,7 +143,7 @@ def setcol(c: Colour, g: Grid) -> Grid:
     primitive_assert(c != 0, "setcol with 0 has no effect")
 
     grid = np.zeros_like(g.grid)
-    grid[np.nonzero(grid)] == c
+    grid[np.nonzero(g.grid)] = c
     return g.newgrid(grid)
 
 def set_bg(c: Colour, g: Grid) -> Grid:
