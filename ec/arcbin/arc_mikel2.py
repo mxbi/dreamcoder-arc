@@ -21,12 +21,16 @@ arcPrimitivesIC2.p.generate_ocaml_primitives()
 # make a starting grammar to enumerate over
 grammar = Grammar.uniform(primitives)
 
+def extra_args(parser):
+    parser.add_argument('--evalset', action='store_true', default=False, help='Use the eval set instead of the train set')
+    parser.add_argument('--task-isolation', action='store_true', default=False, help='Isolate tasks from each other')
+
 # generic command line options
 args = commandlineArguments(
     enumerationTimeout=120, 
     aic=0.1,
     iterations=1, 
-    recognitionTimeout=360, 
+    recognitionTimeout=360,
     featureExtractor=MikelArcNet,
     useRecognitionModel=True,#True,
     # contextual=True,
@@ -38,6 +42,8 @@ args = commandlineArguments(
     solver='python',
     compressor='ocaml',
     CPUs=48,
+    
+    extras=extra_args,
     )
 
 wandb_config = args.copy()
@@ -50,13 +56,26 @@ run = wandb.init(
     save_code=True,
     magic=True,
 )
-run.define_metric('test-hit1', summary='max', goal='maximize', step_metric='iteration')
-run.define_metric('test-hit3', summary='max', goal='maximize', step_metric='iteration')
+
 # run.define_metric('recog-loss', summary='min', goal='minimise', step_metric='recog-iter')
 # symmetry_tasks = [30, 38, 52, 56, 66, 70, 82, 86, 105, 108, 112, 115, 116, 139, 141, 149, 151, 154, 163, 171, 176, 178, 179, 209, 210, 240, 241, 243, 248, 310, 345, 359, 360, 379, 371, 384]
 # training = [get_arc_task(i) for i in symmetry_tasks]
-training = get_arc_tasks(n=400, eval=False)
-training
+run.define_metric('iteration')
+if args['evalset']:
+    print('Running on eval-set')
+    training = get_arc_tasks(n=400, eval=True)
+    run.define_metric('test-hit1-eval', summary='max', goal='maximize', step_metric='iteration')
+    run.define_metric('test-hit3-eval', summary='max', goal='maximize', step_metric='iteration')
+else:
+    print('Running on train-set')
+    training = get_arc_tasks(n=400, eval=False)
+    run.define_metric('test-hit1', summary='max', goal='maximize', step_metric='iteration')
+    run.define_metric('test-hit3', summary='max', goal='maximize', step_metric='iteration')
+
+run.define_metric('batch')
+run.define_metric('recog-loss', summary='min', goal='minimise', step_metric='batch')
+run.define_metric('recog-mdl', summary='min', goal='minimise', step_metric='batch')
+run.define_metric('recog-class-loss', summary='min', goal='minimise', step_metric='batch')
 
 # iterate over wake and sleep cycles for our task
 os.makedirs('./experimentOutputs/arc/', exist_ok=True)
@@ -112,4 +131,7 @@ for i, result in enumerate(generator):
     dill.dump(result, open(f'{run_id}_{i}_result.pkl', 'wb'))
     print('ecIterator count {}'.format(i))
 
-    wandb.log({'test-hit1': hit1, 'test-hit3': hit3, 'iteration': i})
+    if args['evalset']:
+        wandb.log({'test-hit1-eval': hit1, 'test-hit3-eval': hit3, 'iteration': i})
+    else:
+        wandb.log({'test-hit1': hit1, 'test-hit3': hit3, 'iteration': i})

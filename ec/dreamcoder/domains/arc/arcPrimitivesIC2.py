@@ -1022,7 +1022,7 @@ class PrimitiveBank:
         with open("solvers/program.ml", "w") as f:
             f.write(''.join(contents))
 
-p = PrimitiveBank(typemap, verbose=True)
+p = PrimitiveBank(typemap, verbose=False)
 
 p.registerMany([rot90, rot180, rot270, flipx, flipy, swapxy])
 

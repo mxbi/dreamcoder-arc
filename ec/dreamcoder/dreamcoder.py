@@ -178,7 +178,11 @@ def ecIterator(grammar, tasks,
                storeTaskMetrics=False,
                rewriteTaskMetrics=True,
                auxiliaryLoss=False,
-               custom_wake_generative=None):
+               custom_wake_generative=None,
+
+               evalset=None, # ignored
+               task_isolation=False,
+               ):
     if enumerationTimeout is None:
         eprint(
             "Please specify an enumeration timeout:",
@@ -341,6 +345,7 @@ def ecIterator(grammar, tasks,
                                                      maximumFrontier=maximumFrontier, 
                                                      CPUs=CPUs, evaluationTimeout=evaluationTimeout,
                                                      solver=solver,
+                                                     task_isolation=task_isolation,
                                                      **kw)
         trainFrontiers, _, trainingTimes = enumerator(tasks, enumerationTimeout=enumerationTimeout)
         testFrontiers, _, testingTimes = enumerator(testingTasks, enumerationTimeout=testingTimeout, testing=True)
@@ -413,7 +418,9 @@ def ecIterator(grammar, tasks,
                                                       CPUs=CPUs,
                                                       evaluationTimeout=evaluationTimeout,
                                                       result=result,
-                                                      use_dctrace=True)
+                                                      use_dctrace=True,
+                                                      task_isolation=task_isolation,
+                                                      )
             result.trainSearchTime = {t: tm for t, tm in times.items() if tm is not None}
         else:
             eprint("Skipping top-down enumeration because we are not using the generative model")

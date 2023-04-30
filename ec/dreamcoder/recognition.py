@@ -927,6 +927,8 @@ class RecognitionModel(nn.Module):
         helmholtzFrontiers = [HelmholtzEntry(f, self)
                               for f in helmholtzFrontiers]
         random.shuffle(helmholtzFrontiers)
+
+        batch_i = 0
         
         helmholtzIndex = [0]
         def getHelmholtz():
@@ -1092,9 +1094,15 @@ class RecognitionModel(nn.Module):
                         break # Stop iterating, then print epoch and loss, then break to finish.
 
                     all_losses.append((loss.data.item(), classificationLoss.data.item()))
-                    wandb.log({"recog-loss": loss.data.item(), "recog-class-loss": classificationLoss.data.item()})
                         
             if (i == 1 or i % 50 == 0) and losses:
+                    
+                wandb.log({"recog-loss": mean(losses), 
+                            "recog-mdl": mean(descriptionLengths),
+                            "recog-class-loss": mean(classificationLosses), 
+                            'batch': batch_i})
+                batch_i += 1
+                
                 # eprint("(ID=%d): " % self.id, "Epoch", i, "Loss", mean(losses))
                 eprint(f"(ID={self.id}): Epoch {i} Loss {mean(losses):.2f}")
                 if realLosses and dreamLosses:

@@ -17,7 +17,8 @@ def multicoreEnumeration(g, tasks, _=None,
                          evaluationTimeout=None,
                          testing=False,
                          use_dctrace=False,
-                         result=None):
+                         result=None,
+                         task_isolation=False):
     '''g: Either a Grammar, or a map from task to grammar.
     Returns (list-of-frontiers, map-from-task-to-search-time)'''
 
@@ -67,7 +68,10 @@ def multicoreEnumeration(g, tasks, _=None,
     if solver == solveForTask_python and CPUs > 1:
         print(f"Using experimental Python parallelism with {CPUs} CPUs")
         for i, t in enumerate(tasks):
-            k = (task2grammar[t], t.request, i % CPUs)
+            if task_isolation:
+                k = (task2grammar[t], t.request, i)
+            else:
+                k = (task2grammar[t], t.request, i % CPUs)
             jobs[k] = jobs.get(k, []) + [t]
     else:
         for i, t in enumerate(tasks):
