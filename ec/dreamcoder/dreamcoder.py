@@ -14,6 +14,7 @@ from dreamcoder.taskBatcher import *
 from dreamcoder.primitiveGraph import graphPrimitives
 from dreamcoder.dreaming import backgroundHelmholtzEnumeration
 
+import wandb
 
 class ECResult():
     def __init__(self, _=None,
@@ -113,7 +114,7 @@ class ECResult():
         with open(path,'rb') as handle:
             result = dill.load(handle)
         
-        result.recognitionModel = None
+        # result.recognitionModel = None
         
         clearedPath = path[:-len(SUFFIX)] + "_graph=True" + SUFFIX
         with open(clearedPath,'wb') as handle:
@@ -410,7 +411,9 @@ def ecIterator(grammar, tasks,
                                                       maximumFrontier=maximumFrontier,
                                                       enumerationTimeout=enumerationTimeout,
                                                       CPUs=CPUs,
-                                                      evaluationTimeout=evaluationTimeout)
+                                                      evaluationTimeout=evaluationTimeout,
+                                                      result=result,
+                                                      use_dctrace=True)
             result.trainSearchTime = {t: tm for t, tm in times.items() if tm is not None}
         else:
             eprint("Skipping top-down enumeration because we are not using the generative model")
@@ -550,13 +553,15 @@ def default_wake_generative(grammar, tasks,
                     enumerationTimeout=None,
                     CPUs=None,
                     solver=None,
-                    evaluationTimeout=None):
+                    evaluationTimeout=None,
+                    **kwargs):
     topDownFrontiers, times = multicoreEnumeration(grammar, tasks, 
                                                    maximumFrontier=maximumFrontier,
                                                    enumerationTimeout=enumerationTimeout,
                                                    CPUs=CPUs,
                                                    solver=solver,
-                                                   evaluationTimeout=evaluationTimeout)
+                                                   evaluationTimeout=evaluationTimeout,
+                                                   **kwargs)
     eprint("Generative model enumeration results:")
     eprint(Frontier.describe(topDownFrontiers))
     summaryStatistics("Generative model", [t for t in times.values() if t is not None])
@@ -595,6 +600,9 @@ def sleep_recognition(result, grammar, taskBatch, tasks, testingTasks, allFronti
                                                                          vectorized=True),
                                      recognizers,
                                      seedRandom=True)
+    
+    result.recognition_losses = [r.all_losses for r in trainedRecognizers]
+
     eprint(f"Currently using this much memory: {getThisMemoryUsage()}")
     # Enumerate frontiers for each of the recognizers.
     eprint("Trained an ensemble of %d recognition models, now enumerating." % len(trainedRecognizers))
@@ -610,7 +618,8 @@ def sleep_recognition(result, grammar, taskBatch, tasks, testingTasks, allFronti
                                                       maximumFrontier=maximumFrontier,
                                                       enumerationTimeout=enumerationTimeout,
                                                       evaluationTimeout=evaluationTimeout,
-                                                      solver=solver)
+                                                      solver=solver,
+                                                      result=result)
         ensembleFrontiers.append(bottomupFrontiers)
         ensembleTimes.append([t for t in allRecognitionTimes.values() if t is not None])
         ensembleRecognitionTimes.append(allRecognitionTimes)

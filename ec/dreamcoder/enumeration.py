@@ -15,9 +15,14 @@ def multicoreEnumeration(g, tasks, _=None,
                          maximumFrontier=None,
                          verbose=True,
                          evaluationTimeout=None,
-                         testing=False):
+                         testing=False,
+                         use_dctrace=False,
+                         result=None):
     '''g: Either a Grammar, or a map from task to grammar.
     Returns (list-of-frontiers, map-from-task-to-search-time)'''
+
+    if use_dctrace and result is None:
+        raise ValueError("multicoreEnumeration: Must provide a result object if using dctrace")
 
     # We don't use actual threads but instead use the multiprocessing
     # library. This is because we need to be able to kill workers.
@@ -145,6 +150,7 @@ def multicoreEnumeration(g, tasks, _=None,
 
     last_update_time = 0
 
+    all_dctraces = []
     while True:
         refreshJobs()
         # Don't launch a job that we are already working on
@@ -187,7 +193,8 @@ def multicoreEnumeration(g, tasks, _=None,
                                  evaluationTimeout=evaluationTimeout,
                                  maximumFrontiers=maximumFrontiers(j),
                                  testing=testing,
-                                 likelihoodModel=likelihoodModel)
+                                 likelihoodModel=likelihoodModel,
+                                 use_dctrace=use_dctrace)
                 id2CPUs[nextID] = allocation[j]
                 id2job[nextID] = j
                 nextID += 1
@@ -212,7 +219,10 @@ def multicoreEnumeration(g, tasks, _=None,
             activeCPUs -= id2CPUs[message.ID]
             stopwatches[id2job[message.ID]].stop()
 
-            newFrontiers, searchTimes, pc = message.value
+            newFrontiers, searchTimes, pc, dctraces = message.value
+            if dctraces:
+                all_dctraces.extend(dctraces)
+
             for t, f in newFrontiers.items():
                 oldBest = None if len(
                     frontiers[t]) == 0 else frontiers[t].bestPosterior
@@ -243,6 +253,9 @@ def multicoreEnumeration(g, tasks, _=None,
 
     eprint("We enumerated this many programs, for each task:\n\t",
            list(taskToNumberOfPrograms.values()))
+    
+    if use_dctrace:
+        result.dctraces = all_dctraces
 
     return [frontiers[t] for t in tasks], bestSearchTime
 
@@ -393,7 +406,7 @@ def solveForTask_python(_=None,
                         timeout=None,
                         CPUs=1,
                         likelihoodModel=None,
-                        evaluationTimeout=None, maximumFrontiers=None, testing=False):
+                        evaluationTimeout=None, maximumFrontiers=None, testing=False, **kwargs):
     return enumerateForTasks(g, tasks, likelihoodModel,
                              timeout=timeout,
                              testing=testing,
@@ -401,7 +414,7 @@ def solveForTask_python(_=None,
                              evaluationTimeout=evaluationTimeout,
                              maximumFrontiers=maximumFrontiers,
                              budgetIncrement=budgetIncrement,
-                             lowerBound=lowerBound, upperBound=upperBound)
+                             lowerBound=lowerBound, upperBound=upperBound, **kwargs)
 
 def solveForTask_bottom(_=None,
                         elapsedTime=0.,
@@ -542,7 +555,8 @@ def enumerateForTasks(g, tasks, likelihoodModel, _=None,
                       evaluationTimeout=None,
                       lowerBound=0.,
                       upperBound=100.,
-                      budgetIncrement=1.0, maximumFrontiers=None):
+                      budgetIncrement=1.0, maximumFrontiers=None,
+                      use_dctrace=False):
     assert timeout is not None, \
         "enumerateForTasks: You must provide a timeout."
 
@@ -560,6 +574,7 @@ def enumerateForTasks(g, tasks, likelihoodModel, _=None,
     starting = time()
     previousBudget = lowerBound
     budget = lowerBound + budgetIncrement
+    dc_traces = []
     try:
         totalNumberOfPrograms = 0
         while time() < starting + timeout and \
@@ -587,7 +602,11 @@ def enumerateForTasks(g, tasks, likelihoodModel, _=None,
                     #likelihood = task.logLikelihood(p, evaluationTimeout)
                     #if invalid(likelihood):
                         #continue
+                    if use_dctrace:
+                        t0 = time()
                     success, likelihood = likelihoodModel.score(p, task)
+                    if use_dctrace:
+                        dc_traces.append((time() - t0, p.body, success))
                     if not success:
                         continue
                         
@@ -617,7 +636,10 @@ def enumerateForTasks(g, tasks, likelihoodModel, _=None,
         tasks[n]: None if len(hits[n]) == 0 else \
         min(t for t,_ in hits[n]) for n in range(len(tasks))}
 
-    return frontiers, searchTimes, totalNumberOfPrograms
+    if use_dctrace:
+        return frontiers, searchTimes, totalNumberOfPrograms, dc_traces
+    else:
+        return frontiers, searchTimes, totalNumberOfPrograms, None
 
 
 

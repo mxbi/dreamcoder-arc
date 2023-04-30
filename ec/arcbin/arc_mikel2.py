@@ -10,6 +10,8 @@ from dreamcoder.domains.arc.makeTasks import get_arc_task, get_arc_tasks
 from dreamcoder.domains.arc.main import ArcNet, MikelArcNet
 from dreamcoder.domains.arc import arcPrimitivesIC2
 
+import wandb
+
 run_id = int(time.time())
 print(f'Run ID: {run_id}')
 
@@ -21,12 +23,13 @@ grammar = Grammar.uniform(primitives)
 
 # generic command line options
 args = commandlineArguments(
-    enumerationTimeout=120, 
+    enumerationTimeout=10, 
     aic=0.1,
     iterations=1, 
-    recognitionTimeout=360, 
+    recognitionTimeout=1800, 
     featureExtractor=MikelArcNet,
-    useRecognitionModel=True,
+    useRecognitionModel=False,#True,
+    # contextual=True,
     a=3, 
     maximumFrontier=10, 
     topK=5, 
@@ -34,9 +37,22 @@ args = commandlineArguments(
     structurePenalty=0.1,
     solver='python',
     compressor='ocaml',
-    CPUs=1,
+    CPUs=48,
     )
 
+wandb_config = args.copy()
+wandb_config['hostname'] = os.uname()[1]
+run = wandb.init(
+    # set the wandb project where this run will be logged
+    project="arc",
+    # track hyperparameters and run metadata
+    config=wandb_config,
+    save_code=True,
+    magic=True,
+)
+run.define_metric('test-hit1', summary='max', goal='maximize', step_metric='iteration')
+run.define_metric('test-hit3', summary='max', goal='maximize', step_metric='iteration')
+# run.define_metric('recog-loss', summary='min', goal='minimise', step_metric='recog-iter')
 # symmetry_tasks = [30, 38, 52, 56, 66, 70, 82, 86, 105, 108, 112, 115, 116, 139, 141, 149, 151, 154, 163, 171, 176, 178, 179, 209, 210, 240, 241, 243, 248, 310, 345, 359, 360, 379, 371, 384]
 # training = [get_arc_task(i) for i in symmetry_tasks]
 training = get_arc_tasks(n=400, eval=False)
@@ -95,3 +111,5 @@ for i, result in enumerate(generator):
 
     dill.dump(result, open(f'{run_id}_{i}_result.pkl', 'wb'))
     print('ecIterator count {}'.format(i))
+
+    wandb.log({'test-hit1': hit1, 'test-hit3': hit3, 'iteration': i})

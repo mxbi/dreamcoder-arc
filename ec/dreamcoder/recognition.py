@@ -19,6 +19,9 @@ try:
 except:
     eprint("WARNING: Could not import np. This is only okay when doing pypy compression.")
     
+import wandb
+import time
+import dill
 import json
 
 
@@ -671,6 +674,8 @@ class RecognitionModel(nn.Module):
                 self.grammarBuilder = ContextualGrammarNetwork_LowRank(self.outputDimensionality, grammar, rank)
         else:
             self.grammarBuilder = GrammarNetwork(self.outputDimensionality, grammar)
+
+        print("Using grammarBuilder", self.grammarBuilder)
         
         self.grammar = ContextualGrammar.fromGrammar(grammar) if contextual else grammar
         self.generativeModel = grammar
@@ -701,6 +706,7 @@ class RecognitionModel(nn.Module):
         u = uses(ls)
         u[u > 1.] = 1.
         if self.use_cuda: u = u.cuda()
+        # print(u.mean().item())
         al = self._auxiliaryLoss(self._auxiliaryPrediction(features), u)
         return al
             
@@ -859,7 +865,7 @@ class RecognitionModel(nn.Module):
                 logPrior=e.logPrior) for e in frontier],
             task=frontier.task)
 
-    def train(self, frontiers, _=None, steps=None, lr=0.001, topK=5, CPUs=1,
+    def train(self, frontiers, _=None, steps=None, lr=0.0001, topK=5, CPUs=1,
               timeout=None, evaluationTimeout=0.001,
               helmholtzFrontiers=[], helmholtzRatio=0., helmholtzBatch=1000,
               biasOptimal=None, defaultRequest=None, auxLoss=False, vectorized=True):
@@ -1025,6 +1031,8 @@ class RecognitionModel(nn.Module):
         classificationLosses = []
         totalGradientSteps = 0
         epochs = 9999999
+
+        all_losses = [] # For returning to result
         for i in range(1, epochs + 1):
             if timeout and time.time() - start > timeout:
                 break
@@ -1074,6 +1082,9 @@ class RecognitionModel(nn.Module):
                         realMDL.append(descriptionLengths[-1])
                     if totalGradientSteps > steps:
                         break # Stop iterating, then print epoch and loss, then break to finish.
+
+                    all_losses.append((loss.data.item(), classificationLoss.data.item()))
+                    wandb.log({"recog-loss": loss.data.item(), "recog-class-loss": classificationLoss.data.item()})
                         
             if (i == 1 or i % 50 == 0) and losses:
                 # eprint("(ID=%d): " % self.id, "Epoch", i, "Loss", mean(losses))
@@ -1098,6 +1109,7 @@ class RecognitionModel(nn.Module):
         
         eprint("(ID=%d): " % self.id, " Trained recognition model in",time.time() - start,"seconds")
         self.trained=True
+        self.all_losses = all_losses # Return it to result
         return self
 
     def sampleHelmholtz(self, requests, statusUpdate=None, seed=None):
@@ -1105,7 +1117,7 @@ class RecognitionModel(nn.Module):
             random.seed(seed)
         request = random.choice(requests)
 
-        program = self.generativeModel.sample(request, maximumDepth=6, maxAttempts=100)
+        program = self.generativeModel.sample(request, maximumDepth=3, maxAttempts=100)
         if program is None:
             return None
         task = self.featureExtractor.taskOfProgram(program, request)
@@ -1150,6 +1162,8 @@ class RecognitionModel(nn.Module):
         eprint("Got %d/%d valid samples." % (len(samples), N))
         flushEverything()
 
+        dill.dump(samples, open(f"output/helmholtz_{time.time()}.pkl", "wb"))
+
         return samples
 
     def enumerateFrontiers(self,
@@ -1160,12 +1174,16 @@ class RecognitionModel(nn.Module):
                            CPUs=1,
                            frontierSize=None,
                            maximumFrontier=None,
-                           evaluationTimeout=None):
+                           evaluationTimeout=None,
+                           result=None):
         with timing("Evaluated recognition model"):
             grammars = {task: self.grammarOfTask(task)
                         for task in tasks}
             #untorch seperately to make sure you filter out None grammars
             grammars = {task: grammar.untorch() for task, grammar in grammars.items() if grammar is not None}
+
+        if result:
+            result.recog_grammars = grammars
 
         return multicoreEnumeration(grammars, tasks,
                                     testing=testing,

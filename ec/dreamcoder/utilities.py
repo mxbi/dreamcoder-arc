@@ -12,6 +12,7 @@ from itertools import chain
 import heapq
 
 import hashlib
+import wandb
 
 def computeMD5hash(my_string):
     #https://stackoverflow.com/questions/13259691/convert-string-to-md5
@@ -148,6 +149,8 @@ def updateTaskSummaryMetrics(taskSummaryMetrics, newMetricsDict, key):
             taskSummaryMetrics[task][key] = newMetricsDict[task]
         else:
             taskSummaryMetrics[task] = {key : newMetricsDict[task]}
+
+    # wandb.log(newMetricsDict)
 
 NEGATIVEINFINITY = float('-inf')
 POSITIVEINFINITY = float('inf')
