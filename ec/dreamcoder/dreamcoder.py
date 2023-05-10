@@ -181,6 +181,7 @@ def ecIterator(grammar, tasks,
                custom_wake_generative=None,
 
                evalset=None, # ignored
+               bothset=None, # ignored
                task_isolation=False,
                ):
     if enumerationTimeout is None:
