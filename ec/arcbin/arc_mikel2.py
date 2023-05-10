@@ -134,7 +134,8 @@ for i, result in enumerate(generator):
 
     print(f'Test summary: {hit1} ({hit1/len(result.taskSolutions):.1%}) acc@1, {hit3} ({hit3/len(result.taskSolutions):.1%}) acc@3')
 
-    dill.dump(result, open(f'{run_id}_{i}_result.pkl', 'wb'))
+    os.makedirs('results/', exist_ok=True)
+    dill.dump(result, open(f'results/{run_id}_{i}_result.pkl', 'wb'))
     print('ecIterator count {}'.format(i))
 
     if args['evalset']:

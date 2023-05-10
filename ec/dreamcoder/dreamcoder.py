@@ -347,6 +347,7 @@ def ecIterator(grammar, tasks,
                                                      CPUs=CPUs, evaluationTimeout=evaluationTimeout,
                                                      solver=solver,
                                                      task_isolation=task_isolation,
+                                                     result=result,
                                                      **kw)
         trainFrontiers, _, trainingTimes = enumerator(tasks, enumerationTimeout=enumerationTimeout)
         testFrontiers, _, testingTimes = enumerator(testingTasks, enumerationTimeout=testingTimeout, testing=True)
