@@ -100,6 +100,7 @@ def multicoreEnumeration(g, tasks, _=None,
 
     # Map from task to how many programs we enumerated for that task
     taskToNumberOfPrograms = {t: 0 for t in tasks }
+    taskToFirstSolution = {}
 
     def numberOfHits(f):
         return sum(e.logLikelihood > -0.01 for e in f)
@@ -233,7 +234,7 @@ def multicoreEnumeration(g, tasks, _=None,
             activeCPUs -= id2CPUs[message.ID]
             stopwatches[id2job[message.ID]].stop()
 
-            newFrontiers, searchTimes, pc, dctraces = message.value
+            newFrontiers, searchTimes, pc, dctraces, first_solution_map = message.value
             if dctraces:
                 all_dctraces.extend(dctraces)
 
@@ -243,6 +244,11 @@ def multicoreEnumeration(g, tasks, _=None,
                 frontiers[t] = frontiers[t].combine(f)
                 newBest = None if len(
                     frontiers[t]) == 0 else frontiers[t].bestPosterior
+
+                if len(f):
+                    # We found a solution. If this is the first time, we should calculate which program # it was
+                    if t not in taskToFirstSolution:
+                        taskToFirstSolution[t] = taskToNumberOfPrograms[t] + first_solution_map[t]
 
                 taskToNumberOfPrograms[t] += pc
 
@@ -270,6 +276,13 @@ def multicoreEnumeration(g, tasks, _=None,
     
     if use_dctrace:
         result.dctraces = all_dctraces
+
+    # We keep around the results from every iteration in a list
+    if not hasattr(result, "taskToFirstSolution"):
+        result.taskToFirstSolution = [taskToFirstSolution]
+    else:
+        result.taskToFirstSolution.append(taskToFirstSolution)
+    print('Tasks to first solution:', [(t.name, taskToFirstSolution[t]) for t in taskToFirstSolution])
 
     return [frontiers[t] for t in tasks], bestSearchTime
 
@@ -589,6 +602,7 @@ def enumerateForTasks(g, tasks, likelihoodModel, _=None,
     previousBudget = lowerBound
     budget = lowerBound + budgetIncrement
     dc_traces = []
+    first_solution_map = {}
     try:
         totalNumberOfPrograms = 0
         while time() < starting + timeout and \
@@ -633,6 +647,9 @@ def enumerateForTasks(g, tasks, likelihoodModel, _=None,
                     if len(hits[n]) > maximumFrontiers[n]:
                         hits[n].popMaximum()
 
+                    if task not in first_solution_map:
+                        first_solution_map[task] = totalNumberOfPrograms
+
                 if timeout is not None and time() - starting > timeout:
                     raise EnumerationTimeout
 
@@ -651,9 +668,9 @@ def enumerateForTasks(g, tasks, likelihoodModel, _=None,
         min(t for t,_ in hits[n]) for n in range(len(tasks))}
 
     if use_dctrace:
-        return frontiers, searchTimes, totalNumberOfPrograms, dc_traces
+        return frontiers, searchTimes, totalNumberOfPrograms, dc_traces, first_solution_map
     else:
-        return frontiers, searchTimes, totalNumberOfPrograms, None
+        return frontiers, searchTimes, totalNumberOfPrograms, None, first_solution_map
 
 
 

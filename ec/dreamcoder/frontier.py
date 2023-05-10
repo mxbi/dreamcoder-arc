@@ -10,11 +10,13 @@ class FrontierEntry(object):
             _=None,
             logPrior=None,
             logLikelihood=None,
-            logPosterior=None):
+            logPosterior=None,
+            pc=None,):
         self.logPosterior = logPrior + logLikelihood if logPosterior is None else logPosterior
         self.program = program
         self.logPrior = logPrior
         self.logLikelihood = logLikelihood
+        self.pc = pc
 
     def __repr__(self):
         return "FrontierEntry(program={self.program}, logPrior={self.logPrior}, logLikelihood={self.logLikelihood}".format(

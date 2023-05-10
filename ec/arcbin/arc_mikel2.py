@@ -23,6 +23,7 @@ grammar = Grammar.uniform(primitives)
 
 def extra_args(parser):
     parser.add_argument('--evalset', action='store_true', default=False, help='Use the eval set instead of the train set')
+    parser.add_argument('--bothset', action='store_true', default=False, help='Use both datasets (800 tasks)')
     parser.add_argument('--task-isolation', action='store_true', default=False, help='Isolate tasks from each other')
 
 # generic command line options
@@ -54,7 +55,7 @@ run = wandb.init(
     # track hyperparameters and run metadata
     config=wandb_config,
     save_code=True,
-    magic=True,
+    # magic=True,
 )
 
 # run.define_metric('recog-loss', summary='min', goal='minimise', step_metric='recog-iter')
@@ -66,6 +67,11 @@ if args['evalset']:
     training = get_arc_tasks(n=400, eval=True)
     run.define_metric('test-hit1-eval', summary='max', goal='maximize', step_metric='iteration')
     run.define_metric('test-hit3-eval', summary='max', goal='maximize', step_metric='iteration')
+elif args['bothset']:
+    print('Running on both sets')
+    training = get_arc_tasks(n=400, eval=False) + get_arc_tasks(n=400, eval=True)
+    run.define_metric('test-hit1-both', summary='max', goal='maximize', step_metric='iteration')
+    run.define_metric('test-hit3-both', summary='max', goal='maximize', step_metric='iteration')
 else:
     print('Running on train-set')
     training = get_arc_tasks(n=400, eval=False)
@@ -133,5 +139,7 @@ for i, result in enumerate(generator):
 
     if args['evalset']:
         wandb.log({'test-hit1-eval': hit1, 'test-hit3-eval': hit3, 'iteration': i})
+    elif args['bothset']:
+        wandb.log({'test-hit1-both': hit1, 'test-hit3-both': hit3, 'iteration': i})
     else:
         wandb.log({'test-hit1': hit1, 'test-hit3': hit3, 'iteration': i})
