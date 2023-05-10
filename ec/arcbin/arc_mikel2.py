@@ -54,7 +54,7 @@ run = wandb.init(
     # track hyperparameters and run metadata
     config=wandb_config,
     save_code=True,
-    magic=True,
+    #magic=True,
 )
 
 # run.define_metric('recog-loss', summary='min', goal='minimise', step_metric='recog-iter')
