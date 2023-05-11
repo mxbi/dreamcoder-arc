@@ -107,6 +107,132 @@ def primitive_assert(boolean, message=None):
     if not boolean:
         raise PrimitiveException(message)
 
+import inspect, typing
+
+class PrimitiveBank:
+    def __init__(self, typemap: Dict[Type, TypeConstructor], verbose=False):
+        self.typemap = typemap
+        self.primitives = {}
+        self.verbose = verbose
+
+    def cvt_type(self, anno):
+        # Handle list types natively
+        # These annotations have type typing._GenericAlias
+        # __origin__ attr is list, __args__ attr is a tuple of constituent types
+        if hasattr(anno, '__origin__'):
+            if anno.__origin__ == list:
+                # We recursively convert the constituent
+                return tlist(self.cvt_type(anno.__args__[0]))
+        
+        if anno in self.typemap:
+            return self.typemap[anno]
+        
+        raise TypeError(f"Annotation {anno} has no corresponding DreamCoder type")
+
+    def register(self, f: Callable, name: str=None, typesig: List[TypeConstructor]=None, autocurry: bool=True):
+        if not isinstance(f, typing.Callable):
+            # This is a value, not a function
+            if len(typesig) != 1:
+                raise TypeError('Value passed to Primitive constructor, typesig must be of length 1')
+            if name is None:
+                raise ValueError('Value passed to Primitive constructor, name must be specified')
+            dc_type = typesig[-1]
+
+            primitive = Primitive(name, dc_type, f)
+            primitive.typesig = typesig # Allow later reflection
+            self.primitives[name] = primitive
+
+            if self.verbose:
+                print(f"Registered value {name} of type {dc_type}.")
+
+            return
+
+        if name is None:
+            name = f.__name__
+            if name == '<lambda>':
+                raise ValueError('<lambda> passed to Primitive constructor, name must be specified')
+            
+        fn_sig = inspect.signature(f)
+        params = list(fn_sig.parameters.items())
+        param_count = len(params)
+        if typesig is None:
+            # Generate a DreamCoder type signature for this function by inspection
+            arrow_args = []
+
+            for arg, argtype in params:
+                anno = argtype.annotation
+                arrow_args.append(self.cvt_type(anno))
+
+            typesig = arrow_args + [self.cvt_type(fn_sig.return_annotation)    ]
+
+        dc_type = arrow(*typesig)
+
+        # This function has more than 1 input and needs to be curried
+        # We have special cases for 2/3 params because these are significantly faster
+        if autocurry and param_count > 1:
+            if param_count == 2:
+                func = lambda x: lambda y: f(x, y)
+            elif param_count == 3:
+                func = lambda x: lambda y: lambda z: f(x, y, z)
+            else:
+                def curry(f, n, args):
+                    if n:
+                        return lambda x: curry(f, n-1, args + [x])
+                    return f(*args)
+                func = curry(f, param_count, [])
+        else:
+            func = f
+
+        if self.verbose:
+            print(f"Registered {name} with inferred type {dc_type}.")
+
+        primitive = Primitive(name, dc_type, func)
+        primitive.typesig = typesig # Allow later reflection
+        self.primitives[name] = primitive
+    
+    def registerMany(self, funcs: List[Callable]):
+        for func in funcs:
+            try:
+                self.register(func)
+            except KeyboardInterrupt:
+                raise
+            except:
+                print(f"Error occured on {f}")
+                raise
+
+    @staticmethod
+    def parse_primitive_names(ocaml_contents):
+        contents = ''.join([c[:-1] for c in ocaml_contents if c[0:2] + c[-3:-1] != '(**)'])
+        contents = contents.split('primitive "')[1:]
+        primitives = [p[:p.index('"')] for p in contents if '"' in p]
+        return primitives
+
+    def generate_ocaml_primitives(self):
+        primitives = list(self.primitives.values())
+
+        with open("solvers/program.ml", "r") as f:
+            contents = f.readlines()
+
+        start_ix = min([i for i in range(len(contents)) if contents[i][0:7] == '(* AUTO'])
+        end_ix = min([i for i in range(len(contents)) if contents[i][0:11] == '(* END AUTO'])
+
+        non_auto_contents = contents[0:start_ix+1] + contents[end_ix:]
+        # get the existing primitive names. We won't auto-create any primitives
+        # whose name matches an existing name.
+        existing_primitives = self.parse_primitive_names(non_auto_contents)
+
+        lines = [p.ocaml_string() + '\n' for p in primitives
+                if p.name not in existing_primitives]
+
+        for p in primitives:
+            if p.name in existing_primitives:
+                print('Primitive {} already exists, skipping ocaml code generation for it'.format(p.name))
+
+        contents = contents[0:start_ix+1] + lines + contents[end_ix:]
+
+        with open("solvers/program.ml", "w") as f:
+            f.write(''.join(contents))
+
 # Define primitives now
 def ic_invert(g: Grid) -> Grid:
     """
@@ -636,12 +762,6 @@ def ic_splitrows(g: Grid) -> List[Grid]:
 def ic_insidemarked(g: Grid) -> List[Grid]:
     raise NotImplementedError
 
-def ic_gravity(g: Grid) -> Grid:
-    """
-    Gravity: drop all objects to the bottom of the grid
-    """
-    raise NotImplementedError
-
 ####################################
 # Join
 ####################################
@@ -893,134 +1013,66 @@ def logical_and(g: Grid, h: Grid) -> Grid:
     # return Grid(np.logical_and(g.grid, h.grid))
 
 #############################
-# PRIMITIVE GENERATION
+# GRAVITY
 #############################
 
-import inspect, typing
+def gravity(g: Grid, dx=False, dy=False) -> Grid:
+    assert dx or dy
 
-class PrimitiveBank:
-    def __init__(self, typemap: Dict[Type, TypeConstructor], verbose=False):
-        self.typemap = typemap
-        self.primitives = {}
-        self.verbose = verbose
+    pieces = ic_splitall(g)
 
-    def cvt_type(self, anno):
-        # Handle list types natively
-        # These annotations have type typing._GenericAlias
-        # __origin__ attr is list, __args__ attr is a tuple of constituent types
-        if hasattr(anno, '__origin__'):
-            if anno.__origin__ == list:
-                # We recursively convert the constituent
-                return tlist(self.cvt_type(anno.__args__[0]))
-        
-        if anno in self.typemap:
-            return self.typemap[anno]
-        
-        raise TypeError(f"Annotation {anno} has no corresponding DreamCoder type")
-
-    def register(self, f: Callable, name: str=None, typesig: List[TypeConstructor]=None, autocurry: bool=True):
-        if not isinstance(f, typing.Callable):
-            # This is a value, not a function
-            if len(typesig) != 1:
-                raise TypeError('Value passed to Primitive constructor, typesig must be of length 1')
-            if name is None:
-                raise ValueError('Value passed to Primitive constructor, name must be specified')
-            dc_type = typesig[-1]
-
-            primitive = Primitive(name, dc_type, f)
-            primitive.typesig = typesig # Allow later reflection
-            self.primitives[name] = primitive
-
-            if self.verbose:
-                print(f"Registered value {name} of type {dc_type}.")
-
-            return
-
-        if name is None:
-            name = f.__name__
-            if name == '<lambda>':
-                raise ValueError('<lambda> passed to Primitive constructor, name must be specified')
-            
-        fn_sig = inspect.signature(f)
-        params = list(fn_sig.parameters.items())
-        param_count = len(params)
-        if typesig is None:
-            # Generate a DreamCoder type signature for this function by inspection
-            arrow_args = []
-
-            for arg, argtype in params:
-                anno = argtype.annotation
-                arrow_args.append(self.cvt_type(anno))
-
-            typesig = arrow_args + [self.cvt_type(fn_sig.return_annotation)    ]
-
-        dc_type = arrow(*typesig)
-
-        # This function has more than 1 input and needs to be curried
-        # We have special cases for 2/3 params because these are significantly faster
-        if autocurry and param_count > 1:
-            if param_count == 2:
-                func = lambda x: lambda y: f(x, y)
-            elif param_count == 3:
-                func = lambda x: lambda y: lambda z: f(x, y, z)
-            else:
-                def curry(f, n, args):
-                    if n:
-                        return lambda x: curry(f, n-1, args + [x])
-                    return f(*args)
-                func = curry(f, param_count, [])
-        else:
-            func = f
-
-        if self.verbose:
-            print(f"Registered {name} with inferred type {dc_type}.")
-
-        primitive = Primitive(name, dc_type, func)
-        primitive.typesig = typesig # Allow later reflection
-        self.primitives[name] = primitive
+    # Sort pieces by gravity direction
+    pieces = sorted(pieces, 
+                    key=lambda g: -(g.position[0]*dy+g.position[1]*dx))
     
-    def registerMany(self, funcs: List[Callable]):
-        for func in funcs:
-            try:
-                self.register(func)
-            except KeyboardInterrupt:
-                raise
-            except:
-                print(f"Error occured on {f}")
-                raise
+    # Start with empty grid
+    newgrid = Grid(np.zeros(g.size))
 
-    @staticmethod
-    def parse_primitive_names(ocaml_contents):
-        contents = ''.join([c[:-1] for c in ocaml_contents if c[0:2] + c[-3:-1] != '(**)'])
-        contents = contents.split('primitive "')[1:]
-        primitives = [p[:p.index('"')] for p in contents if '"' in p]
-        return primitives
+    # Iterate over pieces in turn
+    for p in pieces:
+        while True:
+            # Move piece by gravity direction
+            p.position = (p.position[0]+dy, p.position[1]+dx)
 
-    def generate_ocaml_primitives(self):
-        primitives = list(self.primitives.values())
+            # Check that piece is still in bounds
+            if p.position[0] < 0 or p.position[0]+p.size[0] > g.size[0] or \
+                p.position[1] < 0 or p.position[1]+p.size[1] > g.size[1]:
+                p.position = (p.position[0]-dy, p.position[1]-dx)
+                break
 
-        with open("solvers/program.ml", "r") as f:
-            contents = f.readlines()
+            # Check that compositing this piece with the new grid doesn't delete any existing pixels
+            
+            # 1. get the slice of the new grid that this piece will occupy
+            slice = newgrid.grid[p.position[0]:p.position[0]+p.size[0],
+                                p.position[1]:p.position[1]+p.size[1]]
+            # 2. filter that slice by the piece's mask
+            # 3. check that any pixels in the slice are not already occupied
+            if slice[p.grid != 0].any():
+                p.position = (p.position[0]-dy, p.position[1]-dx)
+                break
 
-        start_ix = min([i for i in range(len(contents)) if contents[i][0:7] == '(* AUTO'])
-        end_ix = min([i for i in range(len(contents)) if contents[i][0:11] == '(* END AUTO'])
+        # Piece now has its new position
+        # We can composite it with the new grid
+        newgrid = overlay(newgrid, p)
+    
+    return newgrid
 
-        non_auto_contents = contents[0:start_ix+1] + contents[end_ix:]
-        # get the existing primitive names. We won't auto-create any primitives
-        # whose name matches an existing name.
-        existing_primitives = self.parse_primitive_names(non_auto_contents)
+def gravity_down(g: Grid) -> Grid:
+    return gravity(g, dy=1)
 
-        lines = [p.ocaml_string() + '\n' for p in primitives
-                if p.name not in existing_primitives]
+def gravity_up(g: Grid) -> Grid:
+    return gravity(g, dy=-1)
 
-        for p in primitives:
-            if p.name in existing_primitives:
-                print('Primitive {} already exists, skipping ocaml code generation for it'.format(p.name))
+def gravity_left(g: Grid) -> Grid:
+    return gravity(g, dx=-1)
 
-        contents = contents[0:start_ix+1] + lines + contents[end_ix:]
+def gravity_right(g: Grid) -> Grid:
+    return gravity(g, dx=1)
 
-        with open("solvers/program.ml", "w") as f:
-            f.write(''.join(contents))
+
+#############################
+# PRIMITIVE GENERATION
+#############################
 
 p = PrimitiveBank(typemap, verbose=False)
 
@@ -1094,7 +1146,6 @@ p.registerMany([
     ic_splitrows,
     pickcommon,
     # ic_insidemarked,
-    # gravity?
 ])
 
 for name, func in pickmax_functions.items():
@@ -1115,6 +1166,8 @@ p.register(mapSplit8, "mapSplit8", [arrow(tgrid, tgrid), tgrid, tgrid])
 # Skip colour 0 because this doesnt make much sense as an input to colour functions
 for i in range(1, 10):
     p.register(i, f"c{i}", [tcolour])
+
+p.registerMany([gravity_down, gravity_up, gravity_left, gravity_right])
 
 # for i in range(1, 2):
 #     p.register(i, f"i{i}", [tcount])
