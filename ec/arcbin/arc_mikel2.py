@@ -7,7 +7,7 @@ import time
 from dreamcoder.dreamcoder import commandlineArguments, ecIterator
 from dreamcoder.grammar import Grammar
 from dreamcoder.domains.arc.makeTasks import get_arc_task, get_arc_tasks
-from dreamcoder.domains.arc.main import ArcNet, MikelArcNet
+from dreamcoder.domains.arc.main import MikelArcNet
 from dreamcoder.domains.arc import arcPrimitivesIC2
 
 import wandb
