@@ -12,9 +12,6 @@ from dreamcoder.domains.arc import arcPrimitivesIC2
 
 import wandb
 
-run_id = int(time.time())
-print(f'Run ID: {run_id}')
-
 primitives = arcPrimitivesIC2.p.primitives.values()
 arcPrimitivesIC2.p.generate_ocaml_primitives()
 
@@ -57,6 +54,9 @@ run = wandb.init(
     save_code=True,
     # magic=True,
 )
+
+run_id = run.id#int(time.time())
+print(f'Run ID: {run_id}')
 
 # run.define_metric('recog-loss', summary='min', goal='minimise', step_metric='recog-iter')
 # symmetry_tasks = [30, 38, 52, 56, 66, 70, 82, 86, 105, 108, 112, 115, 116, 139, 141, 149, 151, 154, 163, 171, 176, 178, 179, 209, 210, 240, 241, 243, 248, 310, 345, 359, 360, 379, 371, 384]
@@ -135,7 +135,7 @@ for i, result in enumerate(generator):
     print(f'Test summary: {hit1} ({hit1/len(result.taskSolutions):.1%}) acc@1, {hit3} ({hit3/len(result.taskSolutions):.1%}) acc@3')
 
     os.makedirs('results/', exist_ok=True)
-    dill.dump(result, open(f'results/{run_id}_{i}_result.pkl', 'wb'))
+    dill.dump(result, open(f'results/result_{run_id}_{i}.pkl', 'wb'))
     print('ecIterator count {}'.format(i))
 
     if args['evalset']:
