@@ -5,9 +5,9 @@ import numpy as np
 
 import binutil
 
-import arctools
+import arckit
 
-print(arctools.load_data())
+print(arckit.load_data())
 
 from dreamcoder.ec import commandlineArguments, ecIterator
 from dreamcoder.grammar import Grammar

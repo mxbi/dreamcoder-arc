@@ -2,7 +2,7 @@ from dreamcoder.domains.arc.arcPrimitivesIC2 import *
 import dreamcoder.domains.arc.arcPrimitivesIC2 as p
 from dreamcoder.domains.arc.arcInput import load_task, num_to_id
 
-import arctools
+import arckit
 
 # def train_examples(task_dict):
 #     # examples = [((Input(ex["input"], task_dict["train"]),),
@@ -81,7 +81,7 @@ def convert_arc_task(task, include_test=False):
     return task
 
 def get_arc_tasks(n=None, eval=False):
-    trainset, evalset = arctools.load_data()
+    trainset, evalset = arckit.load_data()
     dataset = evalset if eval else trainset
     if n:
         dataset = dataset[:n]
@@ -89,7 +89,7 @@ def get_arc_tasks(n=None, eval=False):
 
 def get_arc_task(task_num, use_toutput=False):
     task_id = num_to_id(task_num)
-    task = arctools.load_single(task_id)
+    task = arckit.load_single(task_id)
     # return make_arc_task(task_id, task_num=task_num, use_toutput=use_toutput)
     return convert_arc_task(task)
 

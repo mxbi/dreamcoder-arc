@@ -109,7 +109,7 @@ def primitive_assert(boolean, message=None):
 
 import inspect, typing
 
-class PrimitiveBank:
+class DSL:
     def __init__(self, typemap: Dict[Type, TypeConstructor], verbose=False):
         self.typemap = typemap
         self.primitives = {}
@@ -200,6 +200,19 @@ class PrimitiveBank:
                 print(f"Error occured on {f}")
                 raise
 
+    # Decorator function to define a primitive
+    def primitive(self, func: Callable=None, name: str=None, typesig: List[TypeConstructor]=None, autocurry: bool=True):
+        # First, we define a decorator factory
+        def decorator(func):
+            self.register(func, name, typesig, autocurry)
+            return func
+        
+        # If we are called as a decorator factory, return the decorator
+        if func is None:
+            return decorator
+        else:
+            return decorator(func)
+
     @staticmethod
     def parse_primitive_names(ocaml_contents):
         contents = ''.join([c[:-1] for c in ocaml_contents if c[0:2] + c[-3:-1] != '(**)'])
@@ -233,7 +246,13 @@ class PrimitiveBank:
         with open("solvers/program.ml", "w") as f:
             f.write(''.join(contents))
 
-# Define primitives now
+dsl = DSL(typemap, verbose=False)
+
+#############################
+###### Define primitives now
+#############################
+
+@dsl.primitive
 def ic_invert(g: Grid) -> Grid:
     """
     In icecuber, this was filtercol with ID 0, we make it explicit
@@ -246,6 +265,7 @@ def ic_invert(g: Grid) -> Grid:
     grid[g.grid == 0] = mode
     return g.newgrid(grid)
 
+@dsl.primitive
 def ic_filtercol(c: Colour, g: Grid) -> Grid:
     "Remove all colours except the selected colour"
     primitive_assert(c != 0, "filtercol with 0 has no effect")
@@ -254,6 +274,7 @@ def ic_filtercol(c: Colour, g: Grid) -> Grid:
     grid[grid != c] = 0
     return g.newgrid(grid)
 
+@dsl.primitive
 def ic_erasecol(c: Colour, g: Grid) -> Grid:
     "Remove a specified colour from the grid, keeping others intact"
     primitive_assert(c != 0, "erasecol with 0 has no effect")
@@ -261,6 +282,7 @@ def ic_erasecol(c: Colour, g: Grid) -> Grid:
     grid[grid == c] = 0
     return g.newgrid(grid)
 
+@dsl.primitive
 def setcol(c: Colour, g: Grid) -> Grid:
     """
     Set all pixels in the grid to the specified colour.
@@ -272,6 +294,7 @@ def setcol(c: Colour, g: Grid) -> Grid:
     grid[np.nonzero(g.grid)] = c
     return g.newgrid(grid)
 
+@dsl.primitive
 def set_bg(c: Colour, g: Grid) -> Grid:
     """
     Set all zero-pixels to the specified colour
@@ -285,20 +308,24 @@ def set_bg(c: Colour, g: Grid) -> Grid:
 def ic_compress(g: Grid) -> Grid:
     raise NotImplementedError()
 
+@dsl.primitive
 def getpos(g: Grid) -> Position:
     return g.position
 
+@dsl.primitive
 def getsize(g: Grid) -> Size:
     return g.size
 
 # TODO: Have a think about position/size/hull and how they fit in
 # For now I skip getSize0, getHull, getHull0
 
+@dsl.primitive
 def ic_toorigin(g: Grid) -> Grid:
     "Reset a grid's position to zero"
     return Grid(g.grid)
 
 struct4 = np.array([[0,1,0],[1,1,1],[0,1,0]])
+@dsl.primitive
 def fillobj(c: Colour, g: Grid) -> Grid:
     """
     Fill in any closed objects in the grid with a specified colour.
@@ -312,7 +339,7 @@ def fillobj(c: Colour, g: Grid) -> Grid:
 
     return g.newgrid(newgrid)
 
-
+@dsl.primitive
 def ic_fill(g: Grid) -> Grid:
     """
     Returns a grid with all closed objects filled in with the most common colour
@@ -321,7 +348,7 @@ def ic_fill(g: Grid) -> Grid:
     """
     return setcol(topcol(g), fillobj(1, g))
 
-
+@dsl.primitive
 def ic_interior(g: Grid) -> Grid:
     """
     Returns the *interior* of fillobj - i.e. the filled in objects, but not the original border
@@ -337,6 +364,7 @@ def ic_interior2(g: Grid) -> Grid:
 def ic_border(g: Grid) -> Grid:
     raise NotImplementedError
 
+@dsl.primitive
 def ic_center(g: Grid) -> Grid:
     # TODO: Figure out why this is useful
     w,h = g.size
@@ -350,6 +378,7 @@ def ic_center(g: Grid) -> Grid:
 
     return Grid(newgrid, newpos)
 
+@dsl.primitive
 def topcol(g: Grid) -> Colour:
     """
     Returns the most common colour, excluding black.
@@ -357,6 +386,7 @@ def topcol(g: Grid) -> Colour:
     """
     return np.argmax(np.bincount(g.grid.ravel())[1:])+1
 
+@dsl.primitive
 def rarestcol(g: Grid) -> Colour:
     """
     Returns the least common colour, excluding black. 
@@ -368,21 +398,27 @@ def rarestcol(g: Grid) -> Colour:
 
 ## Rigid transformations
 
+@dsl.primitive
 def rot90(g: Grid) -> Grid:
     return g.newgrid(np.rot90(g.grid))
 
+@dsl.primitive
 def rot180(g: Grid) -> Grid:
     return g.newgrid(np.rot90(g.grid, k=2))
 
+@dsl.primitive
 def rot270(g: Grid) -> Grid:
     return g.newgrid(np.rot90(g.grid, k=3))
 
+@dsl.primitive
 def flipx(g: Grid) -> Grid:
     return g.newgrid(np.flip(g.grid, axis=0))
 
+@dsl.primitive
 def flipy(g: Grid) -> Grid:
     return g.newgrid(np.flip(g.grid, axis=1))
 
+@dsl.primitive
 def swapxy(g: Grid) -> Grid:
     return g.newgrid(g.grid.T)
 
@@ -397,13 +433,16 @@ def mirrorHeuristic(g: Grid) -> Grid:
 # To/from Counts
 ####################################
 
+@dsl.primitive
 def countPixels(g: Grid) -> Count:
     return np.count_nonzero(g.grid)
 
+@dsl.primitive
 def countColours(g: Grid) -> Count:
     """Return the number of unique colours in the grid, excluding zero"""
     return np.count_nonzero(np.bincount(g.grid.ravel())[1:])
 
+@dsl.primitive
 def countComponents(g: Grid) -> Count:
     """
     Returns the number of objects in the grid
@@ -414,15 +453,19 @@ def countComponents(g: Grid) -> Count:
     raise NotImplementedError
 
 # TODO: Figure out how I want to do colours here - is this the best way?
+@dsl.primitive
 def countToXY(c: Count, col: Colour) -> Grid:
     return Grid(np.zeros((c, c))+col)
 
+@dsl.primitive
 def countToX(c: Count, col: Colour) -> Grid:
     return Grid(np.zeros((c, 1))+col)
 
+@dsl.primitive
 def countToY(c: Count, col: Colour) -> Grid:
     return Grid(np.zeros((1, c))+col)
 
+@dsl.primitive
 def colourHull(c: Colour, g: Grid) -> Grid:
     """
     Returns a grid with the same size as the input, but of the specified colour
@@ -473,6 +516,7 @@ smear_functions = {
 # border/compression
 ####################################
 
+@dsl.primitive
 def ic_makeborder(g: Grid) -> Grid:
     """
     Return a new grid which is the same as the input, but with a border of 1s around it.
@@ -494,6 +538,7 @@ def ic_makeborder2(g: Grid) -> Grid:
 def ic_makeborder2_maj(g: Grid) -> Grid:
     pass
 
+@dsl.primitive
 def ic_compress2(g: Grid) -> Grid:
     """Deletes any black rows/columns in the grid"""
     keep_rows = np.any(g.grid, axis=1)
@@ -501,6 +546,7 @@ def ic_compress2(g: Grid) -> Grid:
 
     return g.newgrid(g.grid[keep_rows][:, keep_cols])
 
+@dsl.primitive
 def ic_compress3(g: Grid) -> Grid:
     """
     Keep any rows/columns which differ in any way from the previous row/column
@@ -568,10 +614,15 @@ ic_connectX = lambda g: ic_connect_kernel(g, True, False)
 ic_connectY = lambda g: ic_connect_kernel(g, False, True)
 ic_connectXY = lambda g: ic_connect_kernel(g, True, True)
 
+dsl.register(ic_connectX, "ic_connectX", [tgrid, tgrid])
+dsl.register(ic_connectY, "ic_connectY", [tgrid, tgrid])
+dsl.register(ic_connectXY, "ic_connectY", [tgrid, tgrid])
+
 ####################################
 # Spread colours
 ####################################
 
+@dsl.primitive
 def ic_spread(g: Grid) -> Grid:
     """
     Loop through each cell in the grid.
@@ -607,6 +658,7 @@ def ic_spread(g: Grid) -> Grid:
 
     return g.newgrid(output_grid)
 
+@dsl.primitive
 def ic_spread_minor(g: Grid) -> Grid:
     """
     Same as spread, but ignoring the most common colour.
@@ -640,20 +692,24 @@ def ic_spread_minor(g: Grid) -> Grid:
 # Cropping
 ####################################
 
+@dsl.primitive
 def left_half(g: Grid) -> Grid:
     primitive_assert(g.size[1] > 1, "Grid is too small to crop")
     return g.newgrid(g.grid[:, :g.grid.shape[1]//2])
 
+@dsl.primitive
 def right_half(g: Grid) -> Grid:
     """Note that left_half + right_half != identity, middle column may be lost"""
     primitive_assert(g.size[1] > 1, "Grid is too small to crop")
     return g.newgrid(g.grid[:, -g.grid.shape[1]//2:], 
                     offset=(0, g.grid.shape[1]//2 + g.grid.shape[1]%2))
 
+@dsl.primitive
 def top_half(g: Grid) -> Grid:
     primitive_assert(g.size[0] > 1, "Grid is too small to crop")
     return g.newgrid(g.grid[:g.grid.shape[0]//2])
 
+@dsl.primitive
 def bottom_half(g: Grid) -> Grid:
     """Note that top_half + bottom_half != identity, middle row may be lost"""
     primitive_assert(g.size[0] > 1, "Grid is too small to crop")
@@ -669,6 +725,7 @@ def bottom_half(g: Grid) -> Grid:
 # We can implment the shape detector as a separate thing that yields Shape
 # TODO: binary ops
 
+@dsl.primitive
 def ic_embed(img: Grid, shape: Grid) -> Grid:
     """
     Embeds a grid into a larger shape defined by a 2nd argument (zero-padded).
@@ -710,6 +767,7 @@ def ic_cut(g: Grid) -> List[Grid]:
     colour_mask = g.grid == top_colour
     done = np.zeros_like(colour_mask, dtype=np.bool)
 
+@dsl.primitive
 def ic_splitcols(g: Grid) -> List[Grid]:
     """
     Split a grid into multiple grids, each with a single colour.
@@ -720,6 +778,7 @@ def ic_splitcols(g: Grid) -> List[Grid]:
             ret.append(g.newgrid(g.grid == colour))
     return ret
 
+@dsl.primitive
 def ic_splitall(g: Grid) -> List[Grid]:
     """
     Find all objects using 4-structuring element
@@ -734,6 +793,7 @@ def ic_splitall(g: Grid) -> List[Grid]:
     return ret
 
 struct8 = np.array([[1, 1, 1], [1, 1, 1], [1, 1, 1]], dtype=np.int)
+@dsl.primitive
 def split8(g: Grid) -> List[Grid]:
     """
     Find all objects using 8-structuring element
@@ -747,12 +807,14 @@ def split8(g: Grid) -> List[Grid]:
             ret += [g.newgrid(g.grid[obj], offset=(obj[0].start, obj[1].start)) for obj in objects]
     return ret
 
+@dsl.primitive
 def ic_splitcolumns(g: Grid) -> List[Grid]:
     """
     Return all the columns 
     """
     return [g.newgrid(g.grid[:, i:i+1], offset=(0, i)) for i in range(g.grid.shape[1])]
 
+@dsl.primitive
 def ic_splitrows(g: Grid) -> List[Grid]:
     """
     Return all the rows 
@@ -845,6 +907,7 @@ pickmax_functions = {
 }
 
 from collections import Counter
+@dsl.primitive
 def pickcommon(l: List[Grid]) -> Grid:
     """
     Given a list of grids, return the grid which is most common (exactly)
@@ -853,6 +916,7 @@ def pickcommon(l: List[Grid]) -> Grid:
     hashes = [hash(g.grid.data.tobytes()) for g in l]
     return l[hashes.index(Counter(hashes).most_common(1)[0][0])]
 
+@dsl.primitive
 def ic_pickunique(l: List[Grid]) -> Grid:
     """
     Given a list of grids, return the one which has a unique colour unused by any other grid
@@ -875,6 +939,7 @@ def ic_pickunique(l: List[Grid]) -> Grid:
         
     raise PrimitiveException("pickunique: no unique grids (2)")
 
+@dsl.primitive
 def ic_composegrowing(l: List[Grid]) -> Grid:
     """
     Compose a list of grids, to the minimum sized grid that holds all images
@@ -911,13 +976,16 @@ def ic_composegrowing(l: List[Grid]) -> Grid:
 # CUSTOM
 #############################
 
+@dsl.primitive
 def mklist(g: Grid, h: Grid) -> List[Grid]:
     return [g, h]
 
 # cons is taken so we use lcons
+@dsl.primitive
 def lcons(g: Grid, h: List[Grid]) -> List[Grid]:
     return [g] + h
 
+@dsl.primitive
 def overlay(g: Grid, h: Grid) -> Grid:
     """
     If two grids have the same size, overlay them without taking into account position. This returns a new grid at position (0, 0)
@@ -955,24 +1023,28 @@ def overlay(g: Grid, h: Grid) -> Grid:
 #     """
 #     return Grid(np.array([[c]]))
 
+@dsl.primitive
 def repeatX(g: Grid) -> Grid:
     """
     Repeat the grid g horizontally, with no gaps
     """
     return Grid(np.tile(g.grid, (1, 2)))
 
+@dsl.primitive
 def repeatY(g: Grid) -> Grid:
     """
     Repeat the grid g vertically, with no gaps
     """
     return Grid(np.tile(g.grid, (2, 1)))
 
+@dsl.primitive
 def mirrorX(g: Grid) -> Grid:
     """
     Append a reflection of the grid g horizontally
     """
     return Grid(np.hstack((g.grid, np.fliplr(g.grid))))
 
+@dsl.primitive
 def mirrorY(g: Grid) -> Grid:
     """
     Append a reflection of the grid g vertically
@@ -983,6 +1055,7 @@ def mirrorY(g: Grid) -> Grid:
     # print('map', f, len(l), len([f(g) for g in l]))
     # return [f(g) for g in l]
 
+@dsl.primitive(typesig=[arrow(tgrid, tgrid), tgrid, tgrid])
 def mapSplit8(f: Callable[[Grid], Grid], g: Grid) -> Grid:
     """
     Split the grid g into objects, apply f to each, and then reassemble
@@ -994,6 +1067,7 @@ def mapSplit8(f: Callable[[Grid], Grid], g: Grid) -> Grid:
 
 # def map
 
+@dsl.primitive
 def get_bg(c: Colour, g: Grid) -> Grid:
     """
     Return a grid of all the background pixels in g, coloured c
@@ -1001,6 +1075,7 @@ def get_bg(c: Colour, g: Grid) -> Grid:
     """ 
     return Grid(np.where(g.grid == 0, c, 0))
 
+@dsl.primitive
 def logical_and(g: Grid, h: Grid) -> Grid:
     """
     Logical AND between two grids. Use the colour of the first argument
@@ -1057,15 +1132,19 @@ def gravity(g: Grid, dx=False, dy=False) -> Grid:
     
     return newgrid
 
+@dsl.primitive
 def gravity_down(g: Grid) -> Grid:
     return gravity(g, dy=1)
 
+@dsl.primitive
 def gravity_up(g: Grid) -> Grid:
     return gravity(g, dy=-1)
 
+@dsl.primitive
 def gravity_left(g: Grid) -> Grid:
     return gravity(g, dx=-1)
 
+@dsl.primitive
 def gravity_right(g: Grid) -> Grid:
     return gravity(g, dx=1)
 
@@ -1074,102 +1153,102 @@ def gravity_right(g: Grid) -> Grid:
 # PRIMITIVE GENERATION
 #############################
 
-p = PrimitiveBank(typemap, verbose=False)
+# p.registerMany([rot90, rot180, rot270, flipx, flipy, swapxy])
 
-p.registerMany([rot90, rot180, rot270, flipx, flipy, swapxy])
+# # Redo the above
+# p.registerMany([
+#     ic_filtercol,
+#     ic_erasecol,
+#     setcol,
+#     set_bg,
 
-# Redo the above
-p.registerMany([
-    ic_filtercol,
-    ic_erasecol,
-    setcol,
-    set_bg,
+#     # ic_compress,
+#     getpos,
+#     getsize,
 
-    # ic_compress,
-    getpos,
-    getsize,
-
-    #hull?
-    ic_toorigin,
-    fillobj,
-    ic_fill,
-    ic_interior,
-    # ic_interior2,
-    # ic_border,
-    ic_center,
-    topcol,
-    rarestcol
-])
+#     #hull?
+#     ic_toorigin,
+#     fillobj,
+#     ic_fill,
+#     ic_interior,
+#     # ic_interior2,
+#     # ic_border,
+#     ic_center,
+#     topcol,
+#     rarestcol
+# ])
 
 # rigid?
 # count?
 # for dir, f in smear_functions.items():
     # p.register(f, f"smear{dir}", arrow(tgrid, tgrid))
 
-p.registerMany([
-    countPixels,
-    countColours,
-    # countComponents,
+# p.registerMany([
+#     countPixels,
+#     countColours,
+#     # countComponents,
 
-    countToX,
-    countToY,
-    countToXY,
-])
+#     countToX,
+#     countToY,
+#     countToXY,
+# ])
 
-p.register(ic_makeborder)
-# p.register(ic_makeborder2)
-# p.register(ic_makeborder2_maj)
+# p.register(ic_makeborder)
+# # p.register(ic_makeborder2)
+# # p.register(ic_makeborder2_maj)
 
-p.register(ic_compress2)
-p.register(ic_compress3)
+# p.register(ic_compress2)
+# p.register(ic_compress3)
 
-p.register(ic_connectX, "ic_connectX", [tgrid, tgrid])
-p.register(ic_connectY, "ic_connectY", [tgrid, tgrid])
-p.register(ic_connectXY, "ic_connectY", [tgrid, tgrid])
+# dsl.register(ic_connectX, "ic_connectX", [tgrid, tgrid])
+# dsl.register(ic_connectY, "ic_connectY", [tgrid, tgrid])
+# dsl.register(ic_connectXY, "ic_connectY", [tgrid, tgrid])
 
-# spreadcols?
-p.registerMany([left_half, right_half, top_half, bottom_half])
+# # spreadcols?
+# p.registerMany([left_half, right_half, top_half, bottom_half])
 
-# move?
-p.registerMany([
-    ic_embed, 
-    # ic_wrap
-    # broadcast, repeat, mirror?
-    ])
+# # move?
+# p.registerMany([
+#     ic_embed, 
+#     # ic_wrap
+#     # broadcast, repeat, mirror?
+#     ])
 
-p.registerMany([
-    # ic_cut,
-    ic_splitcols,
-    ic_splitall,
-    split8,
-    ic_splitcolumns,
-    ic_splitrows,
-    pickcommon,
-    # ic_insidemarked,
-])
+# p.registerMany([
+#     # ic_cut,
+#     ic_splitcols,
+#     ic_splitall,
+#     split8,
+#     ic_splitcolumns,
+#     ic_splitrows,
+#     pickcommon,
+#     # ic_insidemarked,
+# ])
 
 for name, func in pickmax_functions.items():
-    p.register(func, f"pickmax_{name}", [tlist(tgrid), tgrid])
+    dsl.register(func, f"pickmax_{name}", [tlist(tgrid), tgrid])
 
-p.register(ic_pickunique)
-p.register(ic_composegrowing)
+# p.register(ic_pickunique)
+# p.register(ic_composegrowing)
 # stackline, mystrack, pickmaxes, picknotmaxes?
 
-p.registerMany([mklist, lcons, overlay, 
+# p.registerMany([mklist, lcons, overlay, 
                 # colourPixel, # need to figure out how to do this well: want it for output, but not for input
-                repeatX, repeatY, mirrorX, mirrorY, colourHull, get_bg, logical_and])
+                # repeatX, repeatY, mirrorX, mirrorY, colourHull, get_bg, logical_and])
 
 # flying too close to the sun
-p.register(mapSplit8, "mapSplit8", [arrow(tgrid, tgrid), tgrid, tgrid])
+# p.register(mapSplit8, "mapSplit8", [arrow(tgrid, tgrid), tgrid, tgrid])
 
 # Add ground colours
 # Skip colour 0 because this doesnt make much sense as an input to colour functions
 for i in range(1, 10):
-    p.register(i, f"c{i}", [tcolour])
+    dsl.register(i, f"c{i}", [tcolour])
 
-p.registerMany([gravity_down, gravity_up, gravity_left, gravity_right])
+# p.registerMany([gravity_down, gravity_up, gravity_left, gravity_right])
 
 # for i in range(1, 2):
 #     p.register(i, f"i{i}", [tcount])
 
-print(f"Registered {len(p.primitives)} total primitives.")
+print(f"Registered {len(dsl.primitives)} total primitives.")
+
+p = dsl # backwards compatibility

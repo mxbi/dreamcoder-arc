@@ -12,8 +12,8 @@ from dreamcoder.domains.arc import arcPrimitivesIC2
 
 import wandb
 
-primitives = arcPrimitivesIC2.p.primitives.values()
-arcPrimitivesIC2.p.generate_ocaml_primitives()
+primitives = arcPrimitivesIC2.dsl.primitives.values()
+arcPrimitivesIC2.dsl.generate_ocaml_primitives()
 
 # make a starting grammar to enumerate over
 grammar = Grammar.uniform(primitives)

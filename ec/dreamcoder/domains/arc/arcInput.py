@@ -4,10 +4,10 @@ import os
 import numpy as np
 import re
 
-import arctools
+import arckit
 
 def load_task(task_id):
-    return arctools.load_single(task_id)#.dreamcoder_format()
+    return arckit.load_single(task_id)#.dreamcoder_format()
 
 # def load_task(task_id, task_path='data/ARC/data/training/'):
 #     filename = task_path + task_id + '.json'
@@ -59,7 +59,7 @@ def find_example(grid, tasks):
 
 # def get_all_tasks():
 #     "Gets all the training tasks"
-#     trainset, testset = arctools.load_data()
+#     trainset, testset = arckit.load_data()
 
 #     # return [task.dreamcoder_format() for task in trainset]
 #     return trainset
