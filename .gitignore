@@ -1,8 +1,12 @@
 build/
 images/
+ec/results/
 ec/wandb/
 icecuber/
 .ipynb_checkpoints
+dist/
+icecuber/
+*.code-workspace
 
 .merlin
 .idea/
