@@ -1,46 +1,68 @@
-# ARC Tools
+# ARC DreamCoder
 
-## Building container for DreamCoder
+> **Neural networks for abstraction and reasoning: Towards broad generalization in machines**  
+> *Mikel Bober-Irizar & Soumya Banerjee*
+
+https://arxiv.org/abs/2402.03507
+
+## Repo overview
+
+Most of this repo follows the primary DreamCoder repo: https://github.com/ellisk42/ec.
+
+Some helpful ARC-specific files:
+- `ec/arcbin/arc_mikel2.py`: The main entry-point for DreamCoder on ARC
+- `ec/dreamcoder/domains/arc/arcPrimitivesIC2.py`: PeARL definitions (domain-specific language).
+- `ec/dreamcoder/domains/arc/main.py`: Recognition model
+- `ec/arcbin/test_primitives_mikel2.py`: Very rough test harness to check that primitives aren't broken
+- `arckit/`: Vendored early version of the [arckit](https://github.com/mxbi/arckit) library.
+
+## Building the DreamCoder environment
+
+Since DreamCoder requires a complex set of dependencies, we follow the original repo in using [Singularity](https://docs.sylabs.io/guides/3.5/user-guide/introduction.html) containers. If you're familiar with Docker, this is quite similar.
+
+The build is a 2-stage process. To use wandb, add a key in `singularity_mod` and create an `arc` project in your repo (or modify the entrypoint script to disable wandb).
 
 ```bash
 cd ec/
+# Build original DreamCoder (with fixes)
 sudo singularity build container.img singularity
+
+# Build additional packages and environment variables.
 cd ..
-sudo singularity build container.img singularity
+sudo singularity build container_mod.img singularity_mod
 ```
 
-## Using arctools
+Now, you have a `container.img` in the root of the repo which can be used to run the DreamCoder environment.
 
-```
-pip install -e .
-```
+## Running experiments
 
 ```bash
-arctask train2
+# See all command-line arguments
+../container_mod.img python -u arcbin/arc_mikel.py --help
 
-                     <Task-train 017c7c7b | 3 train | 1 test>                     
-┏━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━┳━━┳━━━━━━━━┓
-┃ A-in 6x3 ┃ A-out 9x3 ┃ B-in 6x3 ┃ B-out 9x3 ┃ C-in 6x3 ┃ C-out 9x3 ┃  ┃ TA-in  ┃
-┡━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━╇━━╇━━━━━━━━┩
-│  0 1 0   │   0 2 0   │  0 1 0   │   0 2 0   │  0 1 0   │   0 2 0   │  │ 1 1 1  │
-│  1 1 0   │   2 2 0   │  1 0 1   │   2 0 2   │  1 1 0   │   2 2 0   │  │ 0 1 0  │
-│  0 1 0   │   0 2 0   │  0 1 0   │   0 2 0   │  0 1 0   │   0 2 0   │  │ 0 1 0  │
-│  0 1 1   │   0 2 2   │  1 0 1   │   2 0 2   │  0 1 0   │   0 2 0   │  │ 1 1 1  │
-│  0 1 0   │   0 2 0   │  0 1 0   │   0 2 0   │  1 1 0   │   2 2 0   │  │ 0 1 0  │
-│  1 1 0   │   2 2 0   │  1 0 1   │   2 0 2   │  0 1 0   │   0 2 0   │  │ 0 1 0  │
-│          │   0 2 0   │          │   0 2 0   │          │   0 2 0   │  │        │
-│          │   0 2 2   │          │   2 0 2   │          │   2 2 0   │  │        │
-│          │   0 2 0   │          │   0 2 0   │          │   0 2 0   │  │        │
-└──────────┴───────────┴──────────┴───────────┴──────────┴───────────┴──┴────────┘
+# Getting 75/400 on training set
+../container_mod.img python -u arcbin/arc_mikel2.py -c 76 -t 3600 -R 2400 -i 1
+# -c 76: Run on 76 cores
+# -t 3600: 3600 core-seconds per task
+# -R 2400: Train recognition model for 2400s per iteration (all cores)
+# -i 1: Run for one iteration
+
+# 18/400 on evaluation set:
+../container_mod.img python -u arcbin/arc_mikel2.py -c 76 -t 3600 -R 2400 -i 1 --evalset
+# --evalset: Run on ARC-Hard
+
+# Ablation without recognition model (1min per task)
+../container_mod.img python -u arcbin/arc_mikel2.py -c 76 -t 60 -g -i 5 --task-isolation
+# -g: disable recognition model
+# --task-isolation: Don't share programs across multiple tasks
 ```
 
-```python
->>> import arc
->>> train, test = arc.load_data()
->>> train
-<TaskSet: 400 tasks>
->>> train[0]
-<Task-train 007bbfb7 | 5 train | 1 test>
->>> train['017c7c7b']
-<Task-train 017c7c7b | 3 train | 1 test>
-```
+## Acknowledgements
+
+The codebase in this repo is primarily based on the original [DreamCoder](https://github.com/ellisk42/ec) repository, licensed under MIT.
+
+Additionally, I brought in some changes from Simon Alford's [neurosymbolic-modules](https://github.com/neurosymbolicgroup/neurosymbolic-modules) repository as a starting point ([https://github.com/mxbi/arc/commit/a04da2471d327c7e39352048fed2fcd63408c3fd](commit)). The starting point was a combination of these two repos with some additional patches to get it compiling again after a couple years of changes in dependencies.
+
+## License
+
+The original DreamCoder code and my changes are released under M.I.T license. **However, code from the neurosymbolic-modules repo (see above) is currently unlicensed.** I've inquired about getting that open-sourced!

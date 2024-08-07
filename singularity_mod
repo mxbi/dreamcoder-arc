@@ -1,0 +1,18 @@
+Bootstrap: localimage
+From: ec/container.img
+
+%environment
+    export WANDB_CACHE_DIR="./wandb/cache"
+    export WANDB_CONFIG_DIR="./wandb/config"
+    export WANDB_DATA_DIR="./wandb/data"
+    export WANDB_API_KEY="[YOUR API KEY]"
+
+%post
+
+    pip install --upgrade pip
+    pip install rich
+    pip install drawsvg
+    pip install pytest
+    pip install line_profiler
+    pip install wandb
+    pip install arckit
