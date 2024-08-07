@@ -15,6 +15,7 @@ Some helpful ARC-specific files:
 - `ec/dreamcoder/domains/arc/main.py`: Recognition model
 - `ec/arcbin/test_primitives_mikel2.py`: Very rough test harness to check that primitives aren't broken
 - `arckit/`: Vendored early version of the [arckit](https://github.com/mxbi/arckit) library.
+- `solved_tasks.md` shows a list of tasks solved by DreamCoder with corresponding programs.
 
 ## Building the DreamCoder environment
 
@@ -40,7 +41,7 @@ Now, you have a `container.img` in the root of the repo which can be used to run
 # See all command-line arguments
 ../container_mod.img python -u arcbin/arc_mikel.py --help
 
-# Getting 75/400 on training set
+# Getting 70/400 on training set
 ../container_mod.img python -u arcbin/arc_mikel2.py -c 76 -t 3600 -R 2400 -i 1
 # -c 76: Run on 76 cores
 # -t 3600: 3600 core-seconds per task
