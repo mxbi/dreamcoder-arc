@@ -62,8 +62,10 @@ Now, you have a `container.img` in the root of the repo which can be used to run
 
 The codebase in this repo is primarily based on the original [DreamCoder](https://github.com/ellisk42/ec) repository, licensed under MIT.
 
-Additionally, I brought in some changes from Simon Alford's [neurosymbolic-modules](https://github.com/neurosymbolicgroup/neurosymbolic-modules) repository as a starting point ([https://github.com/mxbi/arc/commit/a04da2471d327c7e39352048fed2fcd63408c3fd](commit)). The starting point was a combination of these two repos with some additional patches to get it compiling again after a couple years of changes in dependencies.
+Additionally, I brought in some changes from Simon Alford's [bidir-synth](https://github.com/simonalford42/bidir-synth) repository as a starting point ([https://github.com/mxbi/arc/commit/a04da2471d327c7e39352048fed2fcd63408c3fd](commit)). The starting point was a combination of these two repos with some additional patches to get it compiling again after a couple years of changes in dependencies.
 
 ## License
 
-The original DreamCoder code and my changes are released under M.I.T license. **However, code from the neurosymbolic-modules repo (see above) is currently unlicensed.** I've inquired about getting that open-sourced!
+The code in this repository is licensed under the MIT license. The original DreamCoder and bidir-synth repos are licened under the same license from their respective authors.
+
+The ARC dataset (arckit/arc1.json) is licensed instead under the Apache license.
